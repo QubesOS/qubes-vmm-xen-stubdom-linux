@@ -16,34 +16,33 @@ URLS := \
     https://kernel.org/pub/linux/kernel/v$(firstword $(subst ., ,$(LINUX_VERSION))).x/linux-$(LINUX_VERSION).tar.sign
 
 ALL_URLS := $(patsubst %.sign,%.xz,$(patsubst %.sig,%,$(URLS))) $(filter %.sig, $(URLS)) $(filter %.sign, $(URLS))
-ALL_FILES_TMP := $(notdir $(ALL_URLS))
+ALL_FILES := $(addprefix ,$(ALL_FILES))
 
 ifneq ($(DISTFILES_MIRROR),)
-ALL_URLS := $(addprefix $(DISTFILES_MIRROR),$(ALL_FILES_TMP))
+ALL_URLS := $(addprefix $(DISTFILES_MIRROR),$(ALL_FILES))
 endif
 
-ALL_FILES := $(addprefix dl/,$(ALL_FILES_TMP))
 
-$(filter %.sig, $(ALL_FILES)) $(filter %.sign, $(ALL_FILES)): dl/%:
+$(filter %.sig, $(ALL_FILES)) $(filter %.sign, $(ALL_FILES)): %:
 	@mkdir -p dl
 	@$(FETCH_CMD) $@ $(filter %/$*,$(ALL_URLS))
 
 keys/%.gpg: $$(sort $$(wildcard keys/$$*/*.asc))
 	@cat $^ | gpg --dearmor >$@
 
-dl/%: dl/%.sig keys/$$(firstword $$(subst -, ,$$*)).gpg
+%: %.sig keys/$$(firstword $$(subst -, ,$$*)).gpg
 	@$(FETCH_CMD) $@$(UNTRUSTED_SUFF) $(filter %/$*,$(ALL_URLS))
 	@gpgv --keyring $(word 2,$^) $< $@$(UNTRUSTED_SUFF) 2>/dev/null || \
 		{ echo "Wrong signature on $@$(UNTRUSTED_SUFF)!"; exit 1; }
 	@mv $@$(UNTRUSTED_SUFF) $@
 
-dl/%.xz: dl/%.sign keys/$$(firstword $$(subst -, ,$$*)).gpg
+%.xz: %.sign keys/$$(firstword $$(subst -, ,$$*)).gpg
 	@$(FETCH_CMD) $@$(UNTRUSTED_SUFF) $(filter %/$*.xz,$(ALL_URLS))
 	@gpgv --keyring $(word 2,$^) $< <(xzcat $@$(UNTRUSTED_SUFF)) 2>/dev/null || \
 		{ echo "Wrong signature on $@$(UNTRUSTED_SUFF)!"; exit 1; }
 	@mv $@$(UNTRUSTED_SUFF) $@
 
-dl/%: checksums/%.sha512
+%: checksums/%.sha512
 	@$(FETCH_CMD) $@$(UNTRUSTED_SUFF) $(filter %/$*,$(ALL_URLS))
 	@sha512sum --status -c <(printf "$$(cat $<)  -\n") <$@$(UNTRUSTED_SUFF) || \
 		{ echo "Wrong SHA512 checksum on $@$(UNTRUSTED_SUFF)!"; exit 1; }

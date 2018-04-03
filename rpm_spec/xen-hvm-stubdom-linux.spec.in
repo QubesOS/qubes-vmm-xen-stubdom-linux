@@ -1,10 +1,6 @@
-%{!?version: %define version %(cat version)}
-%if 0%{?qubes_builder}
-%define _builddir %(pwd)
-%endif
 
 Name: xen-hvm-stubdom-linux
-Version: %{version}
+Version: @VERSION@
 Release: 1%{?dist}
 Summary: Linux stubdom files for Xen
 
@@ -39,10 +35,21 @@ BuildRequires: xen-runtime >= 2001:4.8.2-10
 BuildRequires: busybox
 BuildRequires: dracut
 
+Source0: %{name}-%{version}.tar.gz
+Source1: linux-4.9.65.tar.xz
+Source2: qemu-2.10.1.tar.xz
+
+%define debug_package %{nil}
+
 %description
 This package contains the files (i.e. kernel and rootfs) for a Linux based
 stubdom.
 
+%prep
+%setup -q
+
+install -D %{SOURCE1} .
+install -D %{SOURCE2} .
 
 %build
 make -f Makefile.stubdom %{?_smp_mflags}
@@ -59,3 +66,4 @@ make -f Makefile.stubdom DESTDIR=${RPM_BUILD_ROOT} install
 
 
 %changelog
+@CHANGELOG@

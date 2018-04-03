@@ -21,7 +21,7 @@ all: $(VMLINUZ) $(ROOTFS_IMG)
 
 QEMU_PATCHES := $(shell $Q -l qemu)
 
-build/qemu/.extracted: dl/qemu-$(QEMU_VERSION).tar.xz
+build/qemu/.extracted: qemu-$(QEMU_VERSION).tar.xz
 	rm -rf build/qemu
 	mkdir -p build/qemu
 	tar -C build/qemu --strip-components=1 -xf $<
@@ -127,7 +127,7 @@ $(SEABIOS): build/qemu/.patched
 
 LINUX_PATCHES := $(shell $Q -l linux)
 
-build/linux/.extracted: dl/linux-$(LINUX_VERSION).tar.xz
+build/linux/.extracted: linux-$(LINUX_VERSION).tar.xz
 	rm -rf build/linux
 	mkdir -p build/linux
 	tar -C build/linux --strip-components=1 -xf $<

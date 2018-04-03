@@ -1,4 +1,4 @@
-/dl/
+*.tar.*
 /build/
 *.swp
 /pkgs/
