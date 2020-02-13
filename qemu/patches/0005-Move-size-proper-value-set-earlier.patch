@@ -1,0 +1,34 @@
+From 4dbe87503233adbbcee625d1a42ce572869afb6e Mon Sep 17 00:00:00 2001
+From: Artur Puzio <contact@puzio.waw.pl>
+Date: Wed, 12 Feb 2020 19:50:45 +0000
+Subject: [PATCH 5/6] Move *size proper value set earlier
+
+if we can't read Option ROM contents, size is set as initialized Option
+ROM size.
+---
+ hw/xen/xen_pt_load_rom.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/hw/xen/xen_pt_load_rom.c b/hw/xen/xen_pt_load_rom.c
+index 69bea56251..ef17b7c8ad 100644
+--- a/hw/xen/xen_pt_load_rom.c
++++ b/hw/xen/xen_pt_load_rom.c
+@@ -62,6 +62,7 @@ void *pci_assign_dev_load_option_rom(PCIDevice *dev,
+ 
+     snprintf(name, sizeof(name), "%s.rom", object_get_typename(owner));
+     memory_region_init_ram(&dev->rom, owner, name, st.st_size, &error_abort);
++    *size = st.st_size;
+     ptr = memory_region_get_ram_ptr(&dev->rom);
+     memset(ptr, 0xff, st.st_size);
+ 
+@@ -75,7 +76,6 @@ void *pci_assign_dev_load_option_rom(PCIDevice *dev,
+ 
+     pci_register_bar(dev, PCI_ROM_SLOT, 0, &dev->rom);
+     dev->has_rom = true;
+-    *size = st.st_size;
+ close_rom:
+     /* Write "0" to disable ROM */
+     fseek(fp, 0, SEEK_SET);
+-- 
+2.25.0
+

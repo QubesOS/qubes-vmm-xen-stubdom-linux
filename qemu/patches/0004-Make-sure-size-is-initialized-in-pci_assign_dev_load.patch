@@ -1,0 +1,25 @@
+From ef1b8dc321ca097db5fe73c7e66860853d042a6a Mon Sep 17 00:00:00 2001
+From: Artur Puzio <contact@puzio.waw.pl>
+Date: Wed, 12 Feb 2020 19:48:27 +0000
+Subject: [PATCH 4/6] Make sure size is initialized in
+ pci_assign_dev_load_option_rom
+
+---
+ hw/xen/xen_pt_load_rom.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/hw/xen/xen_pt_load_rom.c b/hw/xen/xen_pt_load_rom.c
+index e6a86ca818..69bea56251 100644
+--- a/hw/xen/xen_pt_load_rom.c
++++ b/hw/xen/xen_pt_load_rom.c
+@@ -30,6 +30,7 @@ void *pci_assign_dev_load_option_rom(PCIDevice *dev,
+     struct stat st;
+     void *ptr = NULL;
+     Object *owner = OBJECT(dev);
++    *size = 0;
+ 
+     /* If loading ROM from file, pci handles it */
+     if (dev->romfile || !dev->rom_bar) {
+-- 
+2.25.0
+

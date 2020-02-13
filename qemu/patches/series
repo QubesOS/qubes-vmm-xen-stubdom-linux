@@ -13,3 +13,8 @@ bda08a5-seccomp-prefer-SCMP_ACT_KILL_PROCESS-if-available.patch
 70dfabe-seccomp-set-the-seccomp-filter-to-all-threads.patch
 additional-seccomp-filters.patch
 suppress_vmdesc.patch
+0002-Print-level-1-messages.patch
+0003-Enable-Xen-debugging.patch
+0004-Make-sure-size-is-initialized-in-pci_assign_dev_load.patch
+0005-Move-size-proper-value-set-earlier.patch
+0006-Ignore-host-VBIOS.patch

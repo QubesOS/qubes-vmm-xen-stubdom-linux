@@ -1,0 +1,38 @@
+From d2f698bfdfc0bded1e3f3e5a6e0b3fd05cf12c89 Mon Sep 17 00:00:00 2001
+From: Grzegorz Uriasz <gorbak25@gmail.com>
+Date: Tue, 11 Feb 2020 17:59:16 +0000
+Subject: [PATCH 6/6] Ignore host VBIOS
+
+---
+ hw/xen/xen_pt_load_rom.c | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+diff --git a/hw/xen/xen_pt_load_rom.c b/hw/xen/xen_pt_load_rom.c
+index ef17b7c8ad..4619c20973 100644
+--- a/hw/xen/xen_pt_load_rom.c
++++ b/hw/xen/xen_pt_load_rom.c
+@@ -37,6 +37,21 @@ void *pci_assign_dev_load_option_rom(PCIDevice *dev,
+         return NULL;
+     }
+ 
++    //TODO: when runnning inside a stubdom retrieve the rombios from a vchan
++    // For now just always return a fake invalid vbios :P
++    int size_vbios = 131072; // Hadcoded size for my laptop - this is ok as this is a test to see what else will break
++    snprintf(name, sizeof(name), "%s.rom", object_get_typename(owner));
++    memory_region_init_ram(&dev->rom, owner, name, size_vbios, &error_abort);
++    ptr = memory_region_get_ram_ptr(&dev->rom);
++    memset(ptr, 0xff, size_vbios);
++
++    // This will trick qemu into mapping a dummy vbios into the guest
++    // This won't matter because as soon as the i935 driver will take over the device
++    // the vbios won't be needed
++    *size = size_vbios;
++    error_report("ASDF: %p", ptr);
++    return ptr;
++
+     snprintf(rom_file, sizeof(rom_file),
+              "/sys/bus/pci/devices/%04x:%02x:%02x.%01x/rom",
+              domain, bus, slot, function);
+-- 
+2.25.0
+

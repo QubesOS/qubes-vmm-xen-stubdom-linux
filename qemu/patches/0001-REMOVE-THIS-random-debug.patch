@@ -1,0 +1,55 @@
+From 4568339e1f525c22a1dc64700dad5396d001222e Mon Sep 17 00:00:00 2001
+From: Artur Puzio <contact@puzio.waw.pl>
+Date: Fri, 17 Jan 2020 23:51:50 +0000
+Subject: [PATCH 1/6] REMOVE THIS - random debug
+
+---
+ hw/char/xen_console.c | 15 ++++++++++++---
+ 1 file changed, 12 insertions(+), 3 deletions(-)
+
+diff --git a/hw/char/xen_console.c b/hw/char/xen_console.c
+index 47e1092263..b5a9657c12 100644
+--- a/hw/char/xen_console.c
++++ b/hw/char/xen_console.c
+@@ -228,10 +228,16 @@ static int con_initialise(struct XenLegacyDevice *xendev)
+     struct XenConsole *con = container_of(xendev, struct XenConsole, xendev);
+     int limit;
+ 
+-    if (xenstore_read_int(con->console, "ring-ref", &con->ring_ref) == -1)
++    xen_pv_printf(xendev, 0, "LOUD Starting init");
++    xen_pv_printf(xendev, 1, "Starting init");
++    if (xenstore_read_int(con->console, "ring-ref", &con->ring_ref) == -1) {
++       xen_pv_printf(xendev, 1, "Fail 1");
+         return -1;
+-    if (xenstore_read_int(con->console, "port", &con->xendev.remote_port) == -1)
++    }
++    if (xenstore_read_int(con->console, "port", &con->xendev.remote_port) == -1) {
++       xen_pv_printf(xendev, 1, "Fail 2");
+         return -1;
++    }
+     if (xenstore_read_int(con->console, "limit", &limit) == 0)
+         con->buffer.max_capacity = limit;
+ 
+@@ -244,8 +250,10 @@ static int con_initialise(struct XenLegacyDevice *xendev)
+         con->sring = xen_be_map_grant_ref(xendev, con->ring_ref,
+                                           PROT_READ | PROT_WRITE);
+     }
+-    if (!con->sring)
++    if (!con->sring) {
++       xen_pv_printf(xendev, 1, "Fail 3");
+         return -1;
++    }
+ 
+     xen_be_bind_evtchn(&con->xendev);
+     qemu_chr_fe_set_handlers(&con->chr, xencons_can_receive,
+@@ -257,6 +265,7 @@ static int con_initialise(struct XenLegacyDevice *xendev)
+                   con->xendev.remote_port,
+                   con->xendev.local_port,
+                   con->buffer.max_capacity);
++    xen_pv_printf(xendev, 1, "Finished init");
+     return 0;
+ }
+ 
+-- 
+2.25.0
+
