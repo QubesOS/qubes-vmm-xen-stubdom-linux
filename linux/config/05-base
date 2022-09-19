@@ -83,3 +83,6 @@ CONFIG_DEFAULT_HOSTNAME="xen-stubdom"
 
 CONFIG_CMDLINE_BOOL=y
 CONFIG_CMDLINE="clocksource=tsc"
+
+# Suspend support
+CONFIG_SUSPEND=y
