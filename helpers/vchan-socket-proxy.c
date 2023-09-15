@@ -41,6 +41,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <getopt.h>
+#include <poll.h>
 
 #include <xenstore.h>
 #include <xenctrl.h>
@@ -300,31 +301,26 @@ int data_loop(struct vchan_proxy_state *state)
 
     libxenvchan_fd = libxenvchan_fd_for_select(state->ctrl);
     for (;;) {
-        fd_set rfds;
-        fd_set wfds;
-        FD_ZERO(&rfds);
-        FD_ZERO(&wfds);
+        struct pollfd fds[3] = {
+            { .fd = libxenvchan_fd, .events = POLLIN | POLLHUP, .revents = 0 },
+            { .fd = -1, .events = 0, .revents = 0 },
+            { .fd = -1, .events = 0, .revents = 0 },
+        };
 
-        max_fd = -1;
         if (state->input_fd != -1 && insiz != BUFSIZE) {
-            FD_SET(state->input_fd, &rfds);
-            if (state->input_fd > max_fd)
-                max_fd = state->input_fd;
+            fds[1].fd = state->input_fd;
+            fds[1].events = POLLIN | POLLHUP;
         }
         if (state->output_fd != -1 && outsiz) {
-            FD_SET(state->output_fd, &wfds);
-            if (state->output_fd > max_fd)
-                max_fd = state->output_fd;
+            fds[2].fd = state->output_fd;
+            fds[2].events = POLLOUT;
         }
-        FD_SET(libxenvchan_fd, &rfds);
-        if (libxenvchan_fd > max_fd)
-            max_fd = libxenvchan_fd;
-        ret = select(max_fd + 1, &rfds, &wfds, NULL, NULL);
+        ret = poll(fds, 3, -1);
         if (ret < 0) {
-            perror("select");
+            perror("poll");
             exit(1);
         }
-        if (FD_ISSET(libxenvchan_fd, &rfds)) {
+        if (fds[0].revents) {
             libxenvchan_wait(state->ctrl);
             if (!libxenvchan_is_open(state->ctrl)) {
                 if (verbose)
@@ -341,7 +337,7 @@ int data_loop(struct vchan_proxy_state *state)
             vchan_wr(state->ctrl);
         }
 
-        if (FD_ISSET(state->input_fd, &rfds)) {
+        if (fds[1].revents) {
             ret = read(state->input_fd, inbuf + insiz, BUFSIZE - insiz);
             if (ret < 0 && errno != EAGAIN)
                 exit(1);
@@ -365,7 +361,7 @@ int data_loop(struct vchan_proxy_state *state)
                 insiz += ret;
             vchan_wr(state->ctrl);
         }
-        if (FD_ISSET(state->output_fd, &wfds))
+        if (fds[2].revents)
             socket_wr(state->output_fd);
         while (libxenvchan_data_ready(state->ctrl) && outsiz < BUFSIZE) {
             ret = libxenvchan_read(state->ctrl, outbuf + outsiz,
