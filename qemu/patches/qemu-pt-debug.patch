@@ -1,0 +1,13 @@
+diff --git a/hw/xen/xen_pt.h b/hw/xen/xen_pt.h
+index b20744f7c7..bb87d48ab8 100644
+--- a/hw/xen/xen_pt.h
++++ b/hw/xen/xen_pt.h
+@@ -5,6 +5,8 @@
+ #include "xen-host-pci-device.h"
+ #include "qom/object.h"
+ 
++#define XEN_PT_LOGGING_ENABLED 1
++
+ bool xen_igd_gfx_pt_enabled(void);
+ void xen_igd_gfx_pt_set(bool value, Error **errp);
+ 

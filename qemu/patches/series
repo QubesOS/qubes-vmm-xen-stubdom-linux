@@ -21,3 +21,4 @@
 0021-Fix-TOLUD-for-PCI-passthroughed-devices.patch
 seabios-python3.patch
 seabios-svgamodes-Add-all-HD-and-QXGA-resolutions.patch
+qemu-pt-debug.patch
