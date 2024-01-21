@@ -19,4 +19,3 @@
 seabios-python3.patch
 vgasrc-ignore-.node.gnu.property-binutils-2.36-suppo.patch
 qemu-stub-xengt-support.patch
-Fix-TOLUD-for-PCI-passthroughed-devices.patch
