@@ -18,11 +18,11 @@ source:
     uncompress: true
     pubkeys:
     - keys/linux/greg.asc
-  - url: https://busybox.net/downloads/busybox-1.31.1.tar.bz2
-#    signature: https://busybox.net/downloads/busybox-1.31.1.tar.bz2.sig
+  - url: https://busybox.net/downloads/busybox-1.36.1.tar.bz2
+#    signature: https://busybox.net/downloads/busybox-1.36.1.tar.bz2.sig
 #    pubkeys:
 #    - keys/busybox/vda_pubkey.asc
-    sha512: checksums/busybox-1.31.1.tar.bz2.sha512
+    sha512: checksums/busybox-1.36.1.tar.bz2.sha512
   - url: https://www.freedesktop.org/software/pulseaudio/releases/pulseaudio-14.2.tar.xz
     sha512: checksums/pulseaudio-14.2.tar.xz.sha512
   - url: https://github.com/libusb/libusb/releases/download/v1.0.23/libusb-1.0.23.tar.bz2
