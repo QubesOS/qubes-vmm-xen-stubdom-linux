@@ -31,9 +31,9 @@ index 27284a2dcd2b..cd063b3c6903 100644
 +	 * buffered data */
 +	drv->init_termios.c_iflag = 0;
 +	drv->init_termios.c_lflag &= ~(ISIG | ICANON);
- 	drv->flags = TTY_DRIVER_REAL_RAW | TTY_DRIVER_RESET_TERMIOS;
  	tty_set_operations(drv, &hvc_ops);
  
+ 	/* Always start the kthread because there can be hotplug vty adapters
 -- 
 2.17.2
 
