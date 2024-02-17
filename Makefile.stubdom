@@ -256,7 +256,6 @@ build/qemu/build/config.status: build/qemu/.patched build/qemu/.gui-agent-copied
 		--disable-numa \
 		--disable-qom-cast-debug \
 		--disable-virglrenderer \
-		--enable-stubdom \
 		--disable-tools \
 		--disable-replication \
 		--disable-hax \

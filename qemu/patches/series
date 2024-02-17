@@ -1,13 +1,11 @@
-0001-configure-add-enable-stubdom.patch
-0002-xen-handle-CONFIG_STUBDOM.patch
-0003-xen-hvm-handle-CONFIG_STUBDOM.patch
+0001-hw-xen-detect-when-running-inside-stubdomain.patch
+0002-xen-fix-stubdom-PCI-addr.patch
 0004-QubesGUI-display-options.patch
 0005-hw-xen-xen_pt-Save-back-data-only-for-declared-regis.patch
 0006-Do-not-access-dev-mem-in-MSI-X-PCI-passthrough-on-Xe.patch
 0007-Conditionally-disable-MSI-X-cap.patch
 0008-xen-round-pci-region-sizes.patch
 0009-Disable-NIC-option-ROM.patch
-0010-xen-fix-stubdom-PCI-addr.patch
 0011-Additional-seccomp-filters.patch
 0012-Register-ich6-ich9-soundhw.patch
 0013-pc_piix-suppress-vmdesc.patch

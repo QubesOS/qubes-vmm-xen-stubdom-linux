@@ -1,0 +1,93 @@
+From e66aa97dca5120f22e015c19710b2ff04f525720 Mon Sep 17 00:00:00 2001
+Message-Id: <e66aa97dca5120f22e015c19710b2ff04f525720.1711505965.git-series.marmarek@invisiblethingslab.com>
+In-Reply-To: <cover.23e6b4d5c3fde23f2b53481b6d2b159fbed14513.1711505965.git-series.marmarek@invisiblethingslab.com>
+References: <cover.23e6b4d5c3fde23f2b53481b6d2b159fbed14513.1711505965.git-series.marmarek@invisiblethingslab.com>
+From: Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>
+Date: Sat, 17 Feb 2024 03:51:44 +0100
+Subject: [PATCH v3 1/2] hw/xen: detect when running inside stubdomain
+
+Introduce global xen_is_stubdomain variable when qemu is running inside
+a stubdomain instead of dom0. This will be relevant for subsequent
+patches, as few things like accessing PCI config space need to be done
+differently.
+
+Signed-off-by: Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>
+---
+Changes in v3:
+- move to xen_hvm_init_pc()
+- coding style
+Changes in v2:
+- use sigend int for domid to match xenstore_read_int() types
+- fix code style
+---
+ hw/i386/xen/xen-hvm.c | 22 ++++++++++++++++++++++
+ include/hw/xen/xen.h  |  1 +
+ softmmu/globals.c      |  1 +
+ 3 files changed, 24 insertions(+)
+
+diff --git a/hw/i386/xen/xen-hvm.c b/hw/i386/xen/xen-hvm.c
+index 7745cb3..3291c17 100644
+--- a/hw/i386/xen/xen-hvm.c
++++ b/hw/i386/xen/xen-hvm.c
+@@ -583,6 +583,26 @@ static void xen_wakeup_notifier(Notifier *notifier, void *data)
+     xc_set_hvm_param(xen_xc, xen_domid, HVM_PARAM_ACPI_S_STATE, 0);
+ }
+ 
++static bool xen_check_stubdomain(struct xs_handle *xsh)
++{
++    char *dm_path = g_strdup_printf(
++        "/local/domain/%d/image/device-model-domid", xen_domid);
++    char *val;
++    int32_t dm_domid;
++    bool is_stubdom = false;
++
++    val = xs_read(xsh, 0, dm_path, NULL);
++    if (val) {
++        if (sscanf(val, "%d", &dm_domid) == 1) {
++            is_stubdom = dm_domid != 0;
++        }
++        free(val);
++    }
++
++    g_free(dm_path);
++    return is_stubdom;
++}
++
+ void xen_hvm_init_pc(PCMachineState *pcms, MemoryRegion **ram_memory)
+ {
+     MachineState *ms = MACHINE(pcms);
+@@ -595,6 +615,8 @@ void xen_hvm_init_pc(PCMachineState *pcms, MemoryRegion **ram_memory)
+ 
+     xen_register_ioreq(state, max_cpus, &xen_memory_listener);
+ 
++    xen_is_stubdomain = xen_check_stubdomain(state->xenstore);
++
+     QLIST_INIT(&xen_physmap);
+     xen_read_physmap(state);
+ 
+diff --git a/include/hw/xen/xen.h b/include/hw/xen/xen.h
+index 37ecc91..ecb89ec 100644
+--- a/include/hw/xen/xen.h
++++ b/include/hw/xen/xen.h
+@@ -36,6 +36,7 @@ enum xen_mode {
+ extern uint32_t xen_domid;
+ extern enum xen_mode xen_mode;
+ extern bool xen_domid_restrict;
++extern bool xen_is_stubdomain;
+ 
+ int xen_pci_slot_get_pirq(PCIDevice *pci_dev, int irq_num);
+ int xen_set_pci_link_route(uint8_t link, uint8_t irq);
+diff --git a/softmmu/globals.c b/softmmu/globals.c
+index e353584..d602a04 100644
+--- a/softmmu/globals.c
++++ b/softmmu/globals.c
+@@ -60,6 +60,7 @@ bool qemu_uuid_set;
+ uint32_t xen_domid;
+ enum xen_mode xen_mode = XEN_DISABLED;
+ bool xen_domid_restrict;
++bool xen_is_stubdomain;
+ struct evtchn_backend_ops *xen_evtchn_ops;
+ struct gnttab_backend_ops *xen_gnttab_ops;
+ struct foreignmem_backend_ops *xen_foreignmem_ops;
+-- 
+git-series 0.9.1
