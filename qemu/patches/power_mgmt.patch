@@ -1,0 +1,88 @@
+Index: qemu/hw/xen/xen_pt.c
+===================================================================
+--- qemu.orig/hw/xen/xen_pt.c
++++ qemu/hw/xen/xen_pt.c
+@@ -960,6 +960,7 @@ static void xen_pt_unregister_device(PCI
+ static Property xen_pci_passthrough_properties[] = {
+     DEFINE_PROP_PCI_HOST_DEVADDR("hostaddr", XenPCIPassthroughState, hostaddr),
+     DEFINE_PROP_BOOL("permissive", XenPCIPassthroughState, permissive, false),
++    DEFINE_PROP_BOOL("power_mgmt", XenPCIPassthroughState, power_mgmt, false),
+     DEFINE_PROP_END_OF_LIST(),
+ };
+ 
+Index: qemu/hw/xen/xen_pt_config_init.c
+===================================================================
+--- qemu.orig/hw/xen/xen_pt_config_init.c
++++ qemu/hw/xen/xen_pt_config_init.c
+@@ -1020,6 +1020,28 @@ static XenPTRegInfo xen_pt_emu_reg_pcie[
+  * Power Management Capability
+  */
+ 
++static int xen_pt_pm_ctrl_reg_init_off(XenPCIPassthroughState *s, XenPTRegInfo *reg,
++                              uint32_t real_offset, uint32_t *data) {
++    if (s->power_mgmt) {
++        *data = XEN_PT_INVALID_REG;
++        return 0;
++    }
++
++    XEN_PT_LOG(&s->dev, "PCI power management control passthrough is off\n");
++    return xen_pt_common_reg_init(s, reg, real_offset, data);
++}
++
++static int xen_pt_pm_ctrl_reg_init_on(XenPCIPassthroughState *s, XenPTRegInfo *reg,
++                              uint32_t real_offset, uint32_t *data) {
++    if (!s->power_mgmt) {
++        *data = XEN_PT_INVALID_REG;
++        return 0;
++    }
++
++    XEN_PT_LOG(&s->dev, "PCI power management control passthrough is on\n");
++    return xen_pt_common_reg_init(s, reg, real_offset, data);
++}
++
+ /* Power Management Capability reg static information table */
+ static XenPTRegInfo xen_pt_emu_reg_pm[] = {
+     /* Next Pointer reg */
+@@ -1044,7 +1066,7 @@ static XenPTRegInfo xen_pt_emu_reg_pm[]
+         .u.w.read   = xen_pt_word_reg_read,
+         .u.w.write  = xen_pt_word_reg_write,
+     },
+-    /* PCI Power Management Control/Status reg */
++    /* PCI Power Management Control/Status reg (power_mgmt = 0)*/
+     {
+         .offset     = PCI_PM_CTRL,
+         .size       = 2,
+@@ -1053,7 +1075,20 @@ static XenPTRegInfo xen_pt_emu_reg_pm[]
+         .ro_mask    = 0x610C,
+         .rw1c_mask  = 0x8000,
+         .emu_mask   = 0x810B,
+-        .init       = xen_pt_common_reg_init,
++        .init       = xen_pt_pm_ctrl_reg_init_off,
++        .u.w.read   = xen_pt_word_reg_read,
++        .u.w.write  = xen_pt_word_reg_write,
++    },
++    /* PCI Power Management Control/Status reg (power_mgmt = 1)*/
++    {
++        .offset     = PCI_PM_CTRL,
++        .size       = 2,
++        .init_val   = 0x0008,
++        .res_mask   = 0x00F0,
++        .ro_mask    = 0x610C,
++        .rw1c_mask  = 0x8000,
++        .emu_mask   = 0x0108,
++        .init       = xen_pt_pm_ctrl_reg_init_on,
+         .u.w.read   = xen_pt_word_reg_read,
+         .u.w.write  = xen_pt_word_reg_write,
+     },
+Index: qemu/hw/xen/xen_pt.h
+===================================================================
+--- qemu.orig/hw/xen/xen_pt.h
++++ qemu/hw/xen/xen_pt.h
+@@ -245,6 +245,7 @@ struct XenPCIPassthroughState {
+     bool is_virtfn;
+     bool permissive;
+     bool permissive_warned;
++    bool power_mgmt;
+     XenHostPCIDevice real_device;
+     XenPTRegion bases[PCI_NUM_REGIONS]; /* Access regions */
+     QLIST_HEAD(, XenPTRegGroup) reg_grps;
