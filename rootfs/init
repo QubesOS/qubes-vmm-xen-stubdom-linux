@@ -32,7 +32,7 @@ audio_model=$(echo "$dm_args" | sed -n '/^\(intel-hda\|ac97\|adlib\|es1370\|cs42
 if [ -n "$audio_model" ] ; then
     model_args=
     if [ "$audio_model" == "intel-hda" ] ; then
-	model_args=$',timer-period=1000,out.buffer-length=4000,in.latency=50000'
+	model_args=$',timer-period=1000,out.buffer-length=8000,in.latency=80000'
     fi
     export XDG_CONFIG_HOME='/tmp'
     pa_args=$'-audiodev\npa,id=qemupa,server=unix:/tmp/pa.sock'$model_args;
