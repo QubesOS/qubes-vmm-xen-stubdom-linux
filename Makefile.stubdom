@@ -35,7 +35,7 @@ ifneq ($(filter full,$(MAKECMDGOALS)),)
     ROOTFS_NAME=qemu-stubdom-linux-full-rootfs
     KERNEL_NAME=qemu-stubdom-linux-full-kernel
     KERNEL_CONFIG=[0-9][0-9]-*
-    FULL_BUILDDEPS=build/padist/usr/bin/pulseaudio \
+    FULL_BUILDDEPS=build/padist/usr/local/bin/pulseaudio \
 		build/libusb/.installed \
 		build/qrexec/agent/qrexec-agent
 else
@@ -152,7 +152,7 @@ build/pulseaudio/config.status: build/pulseaudio/.patched  build/pulseaudio/src/
 		ac_cv_header_pwd_h=no \
 		ac_cv_header_grp_h=no
 
-build/padist/usr/bin/pulseaudio: build/pulseaudio/config.status
+build/padist/usr/local/bin/pulseaudio: build/pulseaudio/config.status
 	$(MAKE) $(MAKE_PARALLEL) install-strip -C build/pulseaudio DESTDIR=$(shell pwd)/build/padist
 
 build/libusb/.extracted: libusb-$(LIBUSB_VERSION).tar.bz2
