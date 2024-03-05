@@ -6,6 +6,8 @@ mount -t devtmpfs none /dev
 mount -t sysfs /sys /sys
 mount -t proc /proc /proc
 mount -t tmpfs -o size=1m,nodev,noexec /tmp /tmp
+mkdir /dev/shm
+mount -t tmpfs -o size=1m,nodev,noexec tmpfs /dev/shm
 mount -o remount,ro /
 
 echo 1 > /proc/sys/vm/overcommit_memory
@@ -36,7 +38,7 @@ if [ -n "$audio_model" ] ; then
     fi
     export XDG_CONFIG_HOME='/tmp'
     pa_args=$'-audiodev\npa,id=qemupa,server=unix:/tmp/pa.sock'$model_args;
-    pulseaudio --use-pid-file=no --daemonize=no --exit-idle-time=-1 --disable-shm=yes -n \
+    pulseaudio --use-pid-file=no --daemonize=no --exit-idle-time=-1 -n \
 	-L "module-native-protocol-unix auth-anonymous=1 socket=/tmp/pa.sock" \
 	-L "module-vchan-sink domid=0" &
 fi
