@@ -25,7 +25,7 @@ Signed-off-by: Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>
  1 file changed, 21 insertions(+), 1 deletion(-)
 
 diff --git a/hw/xen/xen_pt.c b/hw/xen/xen_pt.c
-index 36e6f93c37..3380f542d5 100644
+index 36e6f93c3..1c08990bf 100644
 --- a/hw/xen/xen_pt.c
 +++ b/hw/xen/xen_pt.c
 @@ -255,6 +255,7 @@ static void xen_pt_pci_write_config(PCIDevice *d, uint32_t addr,
@@ -66,7 +66,7 @@ index 36e6f93c37..3380f542d5 100644
 +            emul_mask >>= 8;
 +        }
 +        if (emul_len) {
-+            uint32_t mask = ((1 << (emul_len * 8)) - 1);
++            uint32_t mask = ((1L << (emul_len * 8)) - 1);
 +            pci_default_write_config(d, addr + index, write_val & mask, emul_len);
 +        } else {
 +            emul_mask >>= 8;
