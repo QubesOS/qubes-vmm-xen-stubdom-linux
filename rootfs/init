@@ -21,7 +21,7 @@ vm_path=$(xenstore-read "/local/domain/$domid/vm")
 dm_args=$(xenstore-read $(xenstore-list -p "$vm_path/image/dm-argv"|sort))
 
 usb_args=
-if test -e /bin/qrexec-agent; then 
+if test -e /bin/qrexec-agent; then
     usb_args=$'-device\nnec-usb-xhci,id=xhci'
     mkdir -p /var/run/qubes
     USER=root qrexec-agent &
@@ -29,7 +29,7 @@ if test -e /bin/qrexec-agent; then
     mdev -d
 fi
 
-# add audiodev conf to cmdline and run pulseaudio 
+# add audiodev conf to cmdline and run pulseaudio
 audio_model=$(echo "$dm_args" | sed -n '/^\(intel-hda\|ac97\|adlib\|es1370\|cs4231a\|gus\|sb16\)$/ {p}')
 if [ -n "$audio_model" ] ; then
     model_args=
@@ -40,6 +40,10 @@ if [ -n "$audio_model" ] ; then
     pa_args=$'-audiodev\npa,id=qemupa,server=unix:/tmp/pa.sock'$model_args;
     pulseaudio --use-pid-file=no --daemonize=no --exit-idle-time=-1 -n \
 	-L "module-native-protocol-unix auth-anonymous=1 socket=/tmp/pa.sock" \
+	-L "module-always-sink" \
+	-L "module-always-source" \
+	-L "module-null-sink" \
+	-L "module-null-source" \
 	-L "module-vchan-sink domid=0" &
 fi
 

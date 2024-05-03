@@ -66,6 +66,7 @@ if [[ -e "$PWD/build/qrexec/agent/qrexec-agent" ]]; then
 	export LD_LIBRARY_PATH="$PWD/build/padist/lib:$PWD/build/padist/lib/pulseaudio:$PWD/build/qrexec/libqrexec"
     fi
     inst build/padist/usr/local/bin/pulseaudio /bin/pulseaudio
+    inst build/padist/usr/local/bin/pactl /bin/pactl
     for mod in build/padist/lib/module-*.so; do
 	inst "$mod" "/lib/$(basename "$mod")"
     done
@@ -88,7 +89,7 @@ inst build/qrexec/agent/qrexec-agent /bin/qrexec-agent
 inst build/qrexec/agent/qrexec-client-vm /bin/qrexec-client-vm
 inst build/qrexec/agent/qrexec-fork-server /bin/qrexec-fork-server
 echo "root:x:0:0:root:/root:/bin/sh" > "$rootfs_dir"/etc/passwd
-echo "bus/usb/00[1-9]/00[2-9] 0:0 660 *sh /bin/qusb.sh" > "$rootfs_dir"/etc/mdev.conf 
+echo "bus/usb/00[1-9]/00[2-9] 0:0 660 *sh /bin/qusb.sh" > "$rootfs_dir"/etc/mdev.conf
 fi
 
 for i in write watch rm ls list; do
@@ -106,6 +107,12 @@ done
 inst "rootfs/qemu-ifup" "/etc/qemu-ifup"
 inst "rootfs/qemu-ifdown" "/etc/qemu-ifdown"
 inst "rootfs/init" "/init"
+
+mkdir -p "$rootfs_dir"/etc/qubes-rpc
+inst "rootfs/qubes.SetAudioVM" /etc/qubes-rpc/qubes.SetAudioVM
+
+### Uncomment only for development
+#inst "rootfs/qubes.VMShell" /etc/qubes-rpc/qubes.VMShell
 
 mkdir "$rootfs_dir"/lib.new
 (find "$rootfs_dir"/{,usr/,usr/local/}lib{,64} -type f -print0 || true) | xargs -0r mv -t "$rootfs_dir"/lib.new/
