@@ -29,6 +29,12 @@ if test -e /bin/qrexec-agent; then
     mdev -d
 fi
 
+# Extract audiovm parameter and remove them from dm_args
+audio_args=$(echo "$dm_args" | sed -n '/^-qubes-audio:/p')
+dm_args=$(echo "$dm_args" | sed '/^-qubes-audio:/d')
+
+domid="$(echo "$audio_args" | sed -n 's/^.*[:,]audiovm_xid=\([^,]\+\).*$/\1/p')"
+
 # add audiodev conf to cmdline and run pulseaudio
 audio_model=$(echo "$dm_args" | sed -n '/^\(intel-hda\|ac97\|adlib\|es1370\|cs4231a\|gus\|sb16\)$/ {p}')
 if [ -n "$audio_model" ] ; then
@@ -44,7 +50,7 @@ if [ -n "$audio_model" ] ; then
 	-L "module-always-source" \
 	-L "module-null-sink" \
 	-L "module-null-source" \
-	-L "module-vchan-sink domid=0" &
+	-L "module-vchan-sink domid=$domid" &
 fi
 
 # Extract network parameters and remove them from dm_args
