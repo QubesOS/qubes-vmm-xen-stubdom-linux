@@ -2,13 +2,15 @@
 
 set -e
 
-# Default to dom0
+# Default to dom0 if called with empty arg
 domid="${1:-0}"
 
 export PULSE_SERVER=unix:/tmp/pa.sock
 
 pactl unload-module module-vchan-sink
-pactl load-module module-vchan-sink domid="$domid"
 
-pactl set-default-sink vchan_output
-pactl set-default-source vchan_input
+if [ "$domid" -ge 0 ]; then
+    pactl load-module module-vchan-sink domid="$domid"
+    pactl set-default-sink vchan_output
+    pactl set-default-source vchan_input
+fi
