@@ -32,8 +32,12 @@ fi
 # Extract audiovm parameter and remove them from dm_args
 audio_args=$(echo "$dm_args" | sed -n '/^-qubes-audio:/p')
 dm_args=$(echo "$dm_args" | sed '/^-qubes-audio:/d')
-
-domid="$(echo "$audio_args" | sed -n 's/^.*[:,]audiovm_xid=\([^,]\+\).*$/\1/p')"
+# We support core-admin not setting -qubes-audio option
+if [ -z "$audio_args" ]; then
+    domid=0
+else
+    domid="$(echo "$audio_args" | sed -n 's/^.*[:,]audiovm_xid=\([^,]\+\).*$/\1/p')"
+fi
 
 # add audiodev conf to cmdline and run pulseaudio
 audio_model=$(echo "$dm_args" | sed -n '/^\(intel-hda\|ac97\|adlib\|es1370\|cs4231a\|gus\|sb16\)$/ {p}')
