@@ -7,6 +7,9 @@ domid="${1:-0}"
 
 export PULSE_SERVER=unix:/tmp/pa.sock
 
+for module in module-always-sink module-always-source module-null-sink module-null-source; do
+    pactl load-module $module || true
+done
 pactl unload-module module-vchan-sink
 
 if [ "$domid" -ge 0 ]; then
