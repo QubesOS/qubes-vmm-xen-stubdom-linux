@@ -134,7 +134,7 @@ build/pulseaudio/config.status: build/pulseaudio/.patched  build/pulseaudio/src/
 		--disable-tcpwrap \
 		--disable-asyncns \
 		--disable-waveout \
-		--disable-memfd \
+		--enable-memfd \
 		--disable-tests \
 		--disable-glib2 \
 		--with-module-dir=/lib \
