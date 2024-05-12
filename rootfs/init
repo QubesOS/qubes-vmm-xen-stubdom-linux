@@ -21,7 +21,7 @@ vm_path=$(xenstore-read "/local/domain/$domid/vm")
 dm_args=$(xenstore-read $(xenstore-list -p "$vm_path/image/dm-argv"|sort))
 
 usb_args=
-if test -e /bin/qrexec-agent; then 
+if test -e /bin/qrexec-agent; then
     usb_args=$'-device\nnec-usb-xhci,id=xhci'
     mkdir -p /var/run/qubes
     USER=root qrexec-agent &
@@ -29,7 +29,17 @@ if test -e /bin/qrexec-agent; then
     mdev -d
 fi
 
-# add audiodev conf to cmdline and run pulseaudio 
+# Extract audiovm parameter and remove them from dm_args
+audio_args=$(echo "$dm_args" | sed -n '/^-qubes-audio:/p')
+dm_args=$(echo "$dm_args" | sed '/^-qubes-audio:/d')
+# We support core-admin not setting -qubes-audio option
+if [ -z "$audio_args" ]; then
+    domid=0
+else
+    domid="$(echo "$audio_args" | sed -n 's/^.*[:,]audiovm_xid=\([^,]\+\).*$/\1/p')"
+fi
+
+# add audiodev conf to cmdline and run pulseaudio
 audio_model=$(echo "$dm_args" | sed -n '/^\(intel-hda\|ac97\|adlib\|es1370\|cs4231a\|gus\|sb16\)$/ {p}')
 if [ -n "$audio_model" ] ; then
     model_args=
@@ -38,9 +48,18 @@ if [ -n "$audio_model" ] ; then
     fi
     export XDG_CONFIG_HOME='/tmp'
     pa_args=$'-audiodev\npa,id=qemupa,server=unix:/tmp/pa.sock'$model_args;
-    pulseaudio --use-pid-file=no --daemonize=no --exit-idle-time=-1 -n \
-	-L "module-native-protocol-unix auth-anonymous=1 socket=/tmp/pa.sock" \
-	-L "module-vchan-sink domid=0" &
+    if [ "$domid" -ge 0 ]; then
+        pulseaudio --use-pid-file=no --daemonize=no --exit-idle-time=-1 -n \
+            -L "module-native-protocol-unix auth-anonymous=1 socket=/tmp/pa.sock" \
+            -L "module-vchan-sink domid=$domid" &
+    else
+        pulseaudio --use-pid-file=no --daemonize=no --exit-idle-time=-1 -n \
+            -L "module-native-protocol-unix auth-anonymous=1 socket=/tmp/pa.sock" \
+            -L "module-always-sink" \
+            -L "module-always-source" \
+            -L "module-null-sink" \
+            -L "module-null-source" &
+    fi
 fi
 
 # Extract network parameters and remove them from dm_args
