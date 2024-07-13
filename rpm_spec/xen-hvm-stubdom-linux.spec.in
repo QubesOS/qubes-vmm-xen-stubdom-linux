@@ -23,7 +23,7 @@ BuildRequires: quilt
 # QEMU
 BuildRequires: python3
 BuildRequires: zlib-devel
-BuildRequires: xen-devel
+BuildRequires: xen-devel >= 2001:4.18.0
 BuildRequires: glib2-devel
 BuildRequires: autoconf
 BuildRequires: automake
