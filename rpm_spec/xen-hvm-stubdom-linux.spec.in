@@ -51,6 +51,7 @@ BuildRequires: qubes-libvchan-xen-devel
 # Linux
 BuildRequires: bc
 BuildRequires: bison
+BuildRequires: elfutils-libelf-devel
 BuildRequires: flex
 # gcc with support for BTI mitigation
 %if 0%{?fedora} == 25
