@@ -17,7 +17,7 @@ URLS := \
     https://download.qemu.org/qemu-$(QEMU_VERSION).tar.xz.sig \
     https://kernel.org/pub/linux/kernel/v$(firstword $(subst ., ,$(LINUX_VERSION))).x/linux-$(LINUX_VERSION).tar.sign \
     https://busybox.net/downloads/busybox-$(BUSYBOX_VERSION).tar.bz2.sig \
-    https://freedesktop.org/software/pulseaudio/releases/pulseaudio-$(PULSEAUDIO_VERSION).tar.xz \
+    https://www.freedesktop.org/software/pulseaudio/releases/pulseaudio-$(PULSEAUDIO_VERSION).tar.xz \
     https://github.com/libusb/libusb/releases/download/v$(LIBUSB_VERSION)/libusb-$(LIBUSB_VERSION).tar.bz2
 
 ALL_URLS := $(patsubst %.sign,%,$(patsubst %.sig,%,$(URLS))) $(filter %.sig, $(URLS)) $(filter %.sign, $(URLS))
