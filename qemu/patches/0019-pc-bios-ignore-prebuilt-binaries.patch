@@ -12,7 +12,7 @@ diff --git a/pc-bios/meson.build b/pc-bios/meson.build
 index a7224ef469..e88fd46d98 100644
 --- a/pc-bios/meson.build
 +++ b/pc-bios/meson.build
-@@ -24,64 +24,18 @@ if unpack_edk2_blobs
+@@ -24,61 +24,19 @@ if unpack_edk2_blobs
  endif
  
  blobs = [
@@ -49,10 +49,6 @@ index a7224ef469..e88fd46d98 100644
 -  'efi-e1000e.rom',
 -  'efi-vmxnet3.rom',
    'qemu-nsis.bmp',
--  'bamboo.dtb',
--  'canyonlands.dtb',
--  'petalogix-s3adsp1800.dtb',
--  'petalogix-ml605.dtb',
 -  'multiboot.bin',
 -  'multiboot_dma.bin',
 -  'linuxboot.bin',
@@ -69,6 +65,7 @@ index a7224ef469..e88fd46d98 100644
    'qemu_vga.ndrv',
    'edk2-licenses.txt',
    'hppa-firmware.img',
+   'hppa-firmware64.img',
 -  'opensbi-riscv32-generic-fw_dynamic.bin',
 -  'opensbi-riscv64-generic-fw_dynamic.bin',
 -  'npcm7xx_bootrom.bin',
@@ -76,7 +73,7 @@ index a7224ef469..e88fd46d98 100644
 -  'vof-nvram.bin',
  ]
  
- if get_option('install_blobs')
+ dtc = find_program('dtc', required: false)
 -- 
 2.41.0
 

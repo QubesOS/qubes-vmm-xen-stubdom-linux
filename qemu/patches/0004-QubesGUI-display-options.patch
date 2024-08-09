@@ -31,18 +31,22 @@ index 37557c3442..3206bcb0ff 100644
  
      if (s->line_offset != s->last_line_offset ||
          disp_width != s->last_width ||
-diff --git a/include/ui/console.h b/include/ui/console.h
+diff --git a/include/ui/surface.h b/include/ui/surface.h
 index 3e8b22d6c6..f3f0dfa5c3 100644
---- a/include/ui/console.h
-+++ b/include/ui/console.h
-@@ -148,6 +148,7 @@ typedef struct DisplaySurface {
+--- a/include/ui/surface.h
++++ b/include/ui/surface.h
+@@ -27,6 +27,7 @@ typedef struct DisplaySurface {
      HANDLE handle;
      uint32_t handle_offset;
  #endif
 +    uint32_t *xen_refs;
  } DisplaySurface;
  
- typedef struct QemuUIInfo {
+ PixelFormat qemu_default_pixelformat(int bpp);
+diff --git a/include/ui/console.h b/include/ui/console.h
+index 3e8b22d6c6..f3f0dfa5c3 100644
+--- a/include/ui/console.h
++++ b/include/ui/console.h
 @@ -437,6 +438,11 @@ static inline pixman_format_code_t surface_format(DisplaySurface *s)
      return s->format;
  }
@@ -107,6 +111,15 @@ index 006616aa77..0950bc05d4 100644
  ##
  # @DisplayType:
  #
+@@ -1520,6 +1520,8 @@
+ #
+ # @dbus: Start a D-Bus service for the display.  (Since 7.0)
+ #
++# @qubes-gui: Qubes GUI
++#
+ # Since: 2.12
+ ##
+ { 'enum'    : 'DisplayType',
 @@ -1488,7 +1503,8 @@
      { 'name': 'curses', 'if': 'CONFIG_CURSES' },
      { 'name': 'cocoa', 'if': 'CONFIG_COCOA' },
@@ -147,9 +160,9 @@ index bca610b72a..9d6131e3cf 100644
 +        data = qubesgui_alloc_surface_data(width, height, &surface->xen_refs);
 +    assert(data != NULL);
 +
-     surface->format = format;
-     surface->image = pixman_image_create_bits(surface->format,
+     surface->image = pixman_image_create_bits(format,
                                                width, height,
+                                               (void *)data, linesize);
 diff --git a/ui/meson.build b/ui/meson.build
 index d81609fb0e..c86d533d97 100644
 --- a/ui/meson.build

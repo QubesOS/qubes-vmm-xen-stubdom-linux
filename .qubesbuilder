@@ -8,8 +8,8 @@ source:
   # it treats component as external source like "xen", "grub", etc.
   create-archive: true
   files:
-  - url: https://download.qemu.org/qemu-8.1.2.tar.xz
-    signature: https://download.qemu.org/qemu-8.1.2.tar.xz.sig
+  - url: https://download.qemu.org/qemu-9.0.2.tar.xz
+    signature: https://download.qemu.org/qemu-9.0.2.tar.xz.sig
     pubkeys:
     - keys/qemu/mdroth.asc
     - keys/qemu/pbonzini.asc

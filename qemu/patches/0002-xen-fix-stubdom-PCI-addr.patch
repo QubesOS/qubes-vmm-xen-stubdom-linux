@@ -1,10 +1,11 @@
 From 35049e99da634a74578a1ff2cb3ae4cc436ede33 Mon Sep 17 00:00:00 2001
-Message-Id: <35049e99da634a74578a1ff2cb3ae4cc436ede33.1711506237.git-series.marmarek@invisiblethingslab.com>
-In-Reply-To: <cover.527f002866de2be7c275c5000b6e5edfeb7e8368.1711506237.git-series.marmarek@invisiblethingslab.com>
-References: <cover.527f002866de2be7c275c5000b6e5edfeb7e8368.1711506237.git-series.marmarek@invisiblethingslab.com>
-From: Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>
+From: =?UTF-8?q?Marek=20Marczykowski-G=C3=B3recki?=
+ <marmarek@invisiblethingslab.com>
 Date: Wed, 27 Mar 2024 03:23:28 +0100
-Subject: [PATCH v3 2/2] xen: fix stubdom PCI addr
+Subject: [PATCH 2/2] xen: fix stubdom PCI addr
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
 When running in a stubdomain, the config space access via sysfs needs to
 use BDF as seen inside stubdomain (connected via xen-pcifront), which is
@@ -24,12 +25,12 @@ Changes in v2:
 - use %d instead of %u to read values written as %d
 - add a comment from another iteration of this patch by Jason Andryuk
 ---
- hw/xen/xen-host-pci-device.c | 76 ++++++++++++++++++++++++++++++++++++-
- hw/xen/xen-host-pci-device.h |  6 +++-
+ hw/xen/xen-host-pci-device.c | 76 +++++++++++++++++++++++++++++++++++-
+ hw/xen/xen-host-pci-device.h |  6 +++
  2 files changed, 81 insertions(+), 1 deletion(-)
 
 diff --git a/hw/xen/xen-host-pci-device.c b/hw/xen/xen-host-pci-device.c
-index 8c6e9a1..eaf32f2 100644
+index 8c6e9a1716..eaf32f2710 100644
 --- a/hw/xen/xen-host-pci-device.c
 +++ b/hw/xen/xen-host-pci-device.c
 @@ -9,6 +9,8 @@
@@ -136,7 +137,7 @@ index 8c6e9a1..eaf32f2 100644
      if (*errp) {
          goto error;
 diff --git a/hw/xen/xen-host-pci-device.h b/hw/xen/xen-host-pci-device.h
-index 4d8d34e..270dcb2 100644
+index 4d8d34ecb0..270dcb27f7 100644
 --- a/hw/xen/xen-host-pci-device.h
 +++ b/hw/xen/xen-host-pci-device.h
 @@ -23,6 +23,12 @@ typedef struct XenHostPCIDevice {
@@ -153,4 +154,5 @@ index 4d8d34e..270dcb2 100644
      uint16_t device_id;
      uint32_t class_code;
 -- 
-git-series 0.9.1
+2.45.2
+

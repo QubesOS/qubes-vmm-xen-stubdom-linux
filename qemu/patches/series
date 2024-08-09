@@ -10,7 +10,6 @@
 0012-Register-ich6-ich9-soundhw.patch
 0013-pc_piix-suppress-vmdesc.patch
 0014-pc_piix-init-fw_cfg.patch
-0015-i386-load-kernel-on-xen-using-DMA.patch
 0016-IGD-fix-undefined-behaviour.patch
 0017-IGD-improve-legacy-vbios-handling.patch
 0018-IGD-move-enabling-opregion-access-to-libxl.patch

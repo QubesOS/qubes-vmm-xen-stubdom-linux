@@ -1,4 +1,4 @@
-%define QEMU_VERSION 8.1.2
+%define QEMU_VERSION 9.0.2
 %define LINUX_VERSION 6.6.44
 %define BUSYBOX_VERSION 1.36.1
 %define PULSEAUDIO_VERSION 14.2
@@ -37,6 +37,8 @@ BuildRequires: libtool
 BuildRequires: libseccomp-devel
 BuildRequires: pixman-devel
 BuildRequires: hostname
+BuildRequires: libfdt-devel
+BuildRequires: dtc
 
 # pulseaudio
 BuildRequires: gettext-devel

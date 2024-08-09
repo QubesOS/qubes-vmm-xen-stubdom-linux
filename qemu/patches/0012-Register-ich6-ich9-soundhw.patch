@@ -18,11 +18,11 @@ diff --git a/hw/audio/intel-hda.c b/hw/audio/intel-hda.c
 index b9ed231fe8..d6277916dc 100644
 --- a/hw/audio/intel-hda.c
 +++ b/hw/audio/intel-hda.c
-@@ -1321,6 +1321,19 @@ static int intel_hda_and_codec_init(PCIBus *bus, const char *audiodev)
+@@ -1321,6 +1321,20 @@ static int intel_hda_and_codec_init(PCIBus *bus, const char *audiodev)
      return 0;
  }
  
-+static int intel_ich9_and_codec_init(PCIBus *bus)
++static int intel_ich9_and_codec_init(PCIBus *bus, const char *audiodev)
 +{
 +    DeviceState *controller;
 +    BusState *hdabus;
@@ -31,6 +31,7 @@ index b9ed231fe8..d6277916dc 100644
 +    controller = DEVICE(pci_create_simple(bus, -1, "ich9-intel-hda"));
 +    hdabus = QLIST_FIRST(&controller->child_bus);
 +    codec = qdev_new("hda-duplex");
++    qdev_prop_set_string(codec, "audiodev", audiodev);
 +    qdev_realize_and_unref(codec, hdabus, &error_fatal);
 +    return 0;
 +}

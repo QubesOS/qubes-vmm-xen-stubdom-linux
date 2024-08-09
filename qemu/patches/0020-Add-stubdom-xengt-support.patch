@@ -7,7 +7,7 @@ Subject: [PATCH 20/21] Add stubdom xengt support
  hw/pci/pci.c            | 4 ++++
  include/sysemu/sysemu.h | 2 +-
  qemu-options.hx         | 7 ++++++-
- softmmu/vl.c            | 5 +++++
+ system/vl.c            | 5 +++++
  4 files changed, 16 insertions(+), 2 deletions(-)
 
 diff --git a/hw/pci/pci.c b/hw/pci/pci.c
@@ -63,10 +63,10 @@ index b56f6b2fb2..26d60e1b85 100644
      ``none``
          Disable VGA card.
  ERST
-diff --git a/softmmu/vl.c b/softmmu/vl.c
+diff --git a/system/vl.c b/system/vl.c
 index b0b96f67fa..e5a0ee8211 100644
---- a/softmmu/vl.c
-+++ b/softmmu/vl.c
+--- a/system/vl.c
++++ b/system/vl.c
 @@ -941,6 +941,10 @@ static const VGAInterfaceInfo vga_interfaces[VGA_TYPE_MAX] = {
          .name = "Xen paravirtualized framebuffer",
      },

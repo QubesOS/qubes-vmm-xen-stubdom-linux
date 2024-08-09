@@ -10,13 +10,13 @@ Author: alcreator
 
 Contributors: fepitre
 ---
- softmmu/qemu-seccomp.c | 16 ++++++++++++++++
+ system/qemu-seccomp.c | 16 ++++++++++++++++
  1 file changed, 16 insertions(+)
 
-diff --git a/softmmu/qemu-seccomp.c b/softmmu/qemu-seccomp.c
+diff --git a/system/qemu-seccomp.c b/system/qemu-seccomp.c
 index d66a2a1226..d552fb9377 100644
---- a/softmmu/qemu-seccomp.c
-+++ b/softmmu/qemu-seccomp.c
+--- a/system/qemu-seccomp.c
++++ b/system/qemu-seccomp.c
 @@ -136,6 +136,8 @@ static const struct QemuSeccompSyscall denylist[] = {
        0, NULL, SCMP_ACT_TRAP },
      { SCMP_SYS(umount),                 QEMU_SECCOMP_SET_DEFAULT,
@@ -53,13 +53,13 @@ index d66a2a1226..d552fb9377 100644
        0, NULL, SCMP_ACT_TRAP },
      { SCMP_SYS(sgetmask),               QEMU_SECCOMP_SET_OBSOLETE,
 @@ -219,6 +233,8 @@ static const struct QemuSeccompSyscall denylist[] = {
-       0, NULL, SCMP_ACT_TRAP },
+       0, NULL, SCMP_ACT_ERRNO(EPERM) },
      { SCMP_SYS(execve),                 QEMU_SECCOMP_SET_SPAWN,
-       0, NULL, SCMP_ACT_TRAP },
+       0, NULL, SCMP_ACT_ERRNO(EPERM) },
 +    { SCMP_SYS(execveat),               QEMU_SECCOMP_SET_SPAWN,
-+      0, NULL, SCMP_ACT_TRAP },
++      0, NULL, SCMP_ACT_ERRNO(EPERM) },
      { SCMP_SYS(clone),                  QEMU_SECCOMP_SET_SPAWN,
-       ARRAY_SIZE(clone_arg_none), clone_arg_none, SCMP_ACT_TRAP },
+       ARRAY_SIZE(clone_arg_none), clone_arg_none, SCMP_ACT_ERRNO(EPERM) },
      RULE_CLONE_FLAG(CLONE_VM),
 -- 
 2.41.0
