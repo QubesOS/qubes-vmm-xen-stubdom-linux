@@ -60,6 +60,7 @@ if [ -n "$audio_model" ] ; then
             -L "module-null-sink" \
             -L "module-null-source" &
     fi
+    dm_args=$(echo "$dm_args" | sed 's/^\(hda-duplex\)$/\0,audiodev=qemupa/')
 fi
 
 # Extract network parameters and remove them from dm_args
