@@ -160,6 +160,13 @@ while read -r line; do
 done < /proc/kmsg
 ) &
 
+# wait for pulseaudio startup just before starting qemu
+if [ -n "$audio_model" ]; then
+    while ! PULSE_SERVER=unix:/tmp/pa.sock pactl info >/dev/null; do
+        sleep 0.01
+    done
+fi
+
 # replace $STUBDOM_RESTORE_INCOMING_ARG with argument for incoming state - if
 # applicable
 dm_args=$(echo "$dm_args" | sed 's/\$STUBDOM_RESTORE_INCOMING_ARG/fd:3/')
