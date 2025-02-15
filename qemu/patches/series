@@ -15,6 +15,7 @@
 0018-IGD-move-enabling-opregion-access-to-libxl.patch
 0019-pc-bios-ignore-prebuilt-binaries.patch
 0020-Add-stubdom-xengt-support.patch
+0021-hw-xen-consider-PCI_CLASS_DISPLAY_OTHER-for-IGD-too.patch
 seabios-python3.patch
 seabios-svgamodes-Add-all-HD-and-QXGA-resolutions.patch
 power_mgmt.patch
