@@ -22,14 +22,14 @@ diff --git a/hw/display/vga.c b/hw/display/vga.c
 index 37557c3442..3206bcb0ff 100644
 --- a/hw/display/vga.c
 +++ b/hw/display/vga.c
-@@ -1559,6 +1559,8 @@ static void vga_draw_graphic(VGACommonState *s, int full_update)
+@@ -1618,6 +1618,8 @@ static void vga_draw_graphic(VGACommonState *s, int full_update)
      } else {
          share_surface = false;
      }
 +    /* XXX: Qubes GUI can't use a shared buffer */
 +    share_surface = false;
  
-     if (s->line_offset != s->last_line_offset ||
+     if (s->params.line_offset != s->last_line_offset ||
          disp_width != s->last_width ||
 diff --git a/include/ui/surface.h b/include/ui/surface.h
 index 3e8b22d6c6..f3f0dfa5c3 100644
