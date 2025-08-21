@@ -1,0 +1,251 @@
+From f1591a8a80d5874b5fed0735ddfab528500569aa Mon Sep 17 00:00:00 2001
+From: Joel Upham <jupham125@gmail.com>
+Date: Tue, 20 Jun 2023 13:24:34 -0400
+Subject: [PATCH 01/23] pc/xen: Xen Q35 support: provide IRQ handling for PCI
+ devices
+
+The primary difference in PCI device IRQ management between Xen HVM and
+QEMU is that Xen PCI IRQs are "device-centric" while QEMU PCI IRQs are
+"chipset-centric". Namely, Xen uses PCI device BDF and INTx as coordinates
+to assert IRQ while QEMU finds out to which chipset PIRQ the IRQ is routed
+through the hierarchy of PCI buses and manages IRQ assertion on chipset
+side (as PIRQ inputs).
+
+Two callback functions are used for this purpose: .map_irq and .set_irq
+(named after corresponding structure fields). Corresponding Xen-specific
+callback functions are piix3_set_irq() and pci_slot_get_pirq(). In Xen
+case these functions do not operate on pirq pin numbers. Instead, they use
+a specific value to pass BDF/INTx information between .map_irq and
+.set_irq -- PCI device devfn and INTx pin number are combined into
+pseudo-PIRQ in pci_slot_get_pirq, which piix3_set_irq later decodes back
+into devfn and INTx number for passing to *set_pci_intx_level() call.
+
+For Xen on Q35 this scheme is still applicable, with the exception that
+function names are non-descriptive now and need to be renamed to show
+their common i440/Q35 nature. Proposed new names are:
+
+xen_pci_slot_get_pirq --> xen_cmn_pci_slot_get_pirq
+xen_piix3_set_irq     --> xen_cmn_set_irq
+
+Another IRQ-related difference between i440 and Q35 is the number of PIRQ
+inputs and PIRQ routers (PCI IRQ links in terms of ACPI) available. i440
+has 4 PCI interrupt links, while Q35 has 8 (PIRQA...PIRQH).
+Currently Xen have support for only 4 PCI links, so we describe only 4 of
+8 PCI links in ACPI tables. Also, hvmloader disables PIRQ routing for
+PIRQE..PIRQH by writing 80h into corresponding PIRQ[n]_ROUT registers.
+
+All this PCI interrupt routing stuff is largely an ancient legacy from PIC
+era. It's hardly worth to extend number of PCI links supported as we
+normally deal with APIC mode and/or MSI interrupts.
+
+The only useful thing to do with PIRQE..PIRQH routing currently is to
+check if guest actually attempts to use it for some reason (despite ACPI
+PCI routing information provided). In this case, a warning is logged.
+
+Things have changed a bit in modern Qemu, and more changes to the IRQ
+mapping had to be done inside the lpc_ich9 to write the irqs and setup
+the mappings.
+
+Signed-off-by: Alexey Gerasimenko <x1917x@xxxxxxxxx>
+Signed-off-by: Joel Upham <jupham125@gmail.com>
+---
+ hw/i386/pc_piix.c             |  5 ++--
+ hw/i386/xen/xen-hvm.c         |  7 +++--
+ hw/isa/lpc_ich9.c             | 52 +++++++++++++++++++++++++++++++++--
+ include/hw/southbridge/ich9.h |  1 +
+ include/hw/xen/xen.h          |  4 +--
+ stubs/xen-hw-stub.c           |  4 +--
+ 6 files changed, 61 insertions(+), 12 deletions(-)
+
+diff --git a/hw/i386/pc_piix.c b/hw/i386/pc_piix.c
+index 85c9bebbd9..861723c53d 100644
+--- a/hw/i386/pc_piix.c
++++ b/hw/i386/pc_piix.c
+@@ -63,6 +63,7 @@
+ #include "migration/misc.h"
+ #include "sysemu/runstate.h"
+ #include "sysemu/numa.h"
++#include "sysemu/xen.h"
+ #include "hw/hyperv/vmbus-bridge.h"
+ #include "hw/mem/nvdimm.h"
+ #include "hw/i386/acpi-build.h"
+@@ -214,7 +215,7 @@ static void pc_init1(MachineState *machine, const char *pci_type)
+ 
+         pcms->pcibus = PCI_BUS(qdev_get_child_bus(DEVICE(phb), "pci.0"));
+         pci_bus_map_irqs(pcms->pcibus,
+-                         xen_enabled() ? xen_pci_slot_get_pirq
++                         xen_enabled() ? xen_cmn_pci_slot_get_pirq
+                                        : pc_pci_slot_get_pirq);
+ 
+         hole64_size = object_property_get_uint(phb,
+@@ -282,7 +283,7 @@ static void pc_init1(MachineState *machine, const char *pci_type)
+              * connected to the IOAPIC directly.
+              * These additional routes can be discovered through ACPI.
+              */
+-            pci_bus_irqs(pcms->pcibus, xen_intx_set_irq, pci_dev,
++            pci_bus_irqs(pcms->pcibus, xen_cmn_set_irq, pci_dev,
+                          XEN_IOAPIC_NUM_PIRQS);
+         }
+ 
+diff --git a/hw/i386/xen/xen-hvm.c b/hw/i386/xen/xen-hvm.c
+index 3291c177d3..761f89837b 100644
+--- a/hw/i386/xen/xen-hvm.c
++++ b/hw/i386/xen/xen-hvm.c
+@@ -17,6 +17,7 @@
+ #include "hw/i386/pc.h"
+ #include "hw/irq.h"
+ #include "hw/i386/apic-msidef.h"
++#include "hw/southbridge/ich9.h"
+ #include "hw/xen/xen-x86.h"
+ #include "qemu/range.h"
+ 
+@@ -63,14 +64,14 @@ static unsigned long *dirty_bitmap;
+ static Notifier suspend;
+ static Notifier wakeup;
+ 
+-/* Xen specific function for piix pci */
++/* Xen-specific functions for pci dev IRQ handling */
+ 
+-int xen_pci_slot_get_pirq(PCIDevice *pci_dev, int irq_num)
++int xen_cmn_pci_slot_get_pirq(PCIDevice *pci_dev, int irq_num)
+ {
+     return irq_num + (PCI_SLOT(pci_dev->devfn) << 2);
+ }
+ 
+-void xen_intx_set_irq(void *opaque, int irq_num, int level)
++void xen_cmn_set_irq(void *opaque, int irq_num, int level)
+ {
+     xen_set_pci_intx_level(xen_domid, 0, 0, irq_num >> 2,
+                            irq_num & 3, level);
+diff --git a/hw/isa/lpc_ich9.c b/hw/isa/lpc_ich9.c
+index bd727b2320..037e0e710a 100644
+--- a/hw/isa/lpc_ich9.c
++++ b/hw/isa/lpc_ich9.c
+@@ -50,6 +50,9 @@
+ #include "hw/core/cpu.h"
+ #include "hw/nvram/fw_cfg.h"
+ #include "qemu/cutils.h"
++#include "hw/xen/xen.h"
++#include "sysemu/xen.h"
++#include "hw/southbridge/piix.h"
+ #include "hw/acpi/acpi_aml_interface.h"
+ #include "trace.h"
+ 
+@@ -549,11 +552,49 @@ static int ich9_lpc_post_load(void *opaque, int version_id)
+     return 0;
+ }
+ 
++static void ich9_lpc_config_write_xen(PCIDevice *d,
++                                  uint32_t addr, uint32_t val, int len)
++{
++    static bool pirqe_f_warned = false;
++    if (ranges_overlap(addr, len, ICH9_LPC_PIRQA_ROUT, 4)) {
++        /* handle PIRQA..PIRQD routing */
++        /* Scan for updates to PCI link routes (0x60-0x63). */
++        int i;
++        for (i = 0; i < len; i++) {
++            uint8_t v = (val >> (8 * i)) & 0xff;
++            if (v & 0x80) {
++                v = 0;
++            }
++            v &= 0xf;
++            if (((addr + i) >= PIIX_PIRQCA) && ((addr + i) <= PIIX_PIRQCD)) {
++                xen_set_pci_link_route(addr + i - PIIX_PIRQCA, v);
++            }
++        }
++    } else if (ranges_overlap(addr, len, ICH9_LPC_PIRQE_ROUT, 4)) {
++        while (len--) {
++            if (range_covers_byte(ICH9_LPC_PIRQE_ROUT, 4, addr) &&
++                (val & 0x80) == 0) {
++                /* print warning only once */
++                if (!pirqe_f_warned) {
++                    pirqe_f_warned = true;
++                    fprintf(stderr, "WARNING: guest domain attempted to use PIRQ%c "
++                            "routing which is not supported for Xen/Q35 currently\n",
++                            (char)(addr - ICH9_LPC_PIRQE_ROUT + 'E'));
++                    break;
++                }
++            }
++            addr++, val >>= 8;
++        }
++    }
++}
++
+ static void ich9_lpc_config_write(PCIDevice *d,
+                                   uint32_t addr, uint32_t val, int len)
+ {
+     ICH9LPCState *lpc = ICH9_LPC_DEVICE(d);
+     uint32_t rcba_old = pci_get_long(d->config + ICH9_LPC_RCBA);
++    if (xen_enabled())
++        ich9_lpc_config_write_xen(d, addr, val, len);
+ 
+     pci_default_write_config(d, addr, val, len);
+     if (ranges_overlap(addr, len, ICH9_LPC_PMBASE, 4) ||
+@@ -748,9 +789,14 @@ static void ich9_lpc_realize(PCIDevice *d, Error **errp)
+     irq = object_property_get_uint(OBJECT(&lpc->rtc), "irq", &error_fatal);
+     isa_connect_gpio_out(ISA_DEVICE(&lpc->rtc), 0, irq);
+ 
+-    pci_bus_irqs(pci_bus, ich9_lpc_set_irq, d, ICH9_LPC_NB_PIRQS);
+-    pci_bus_map_irqs(pci_bus, ich9_lpc_map_irq);
+-    pci_bus_set_route_irq_fn(pci_bus, ich9_route_intx_pin_to_irq);
++    if (xen_enabled()) {
++        pci_bus_irqs(pci_bus, xen_cmn_set_irq, d, ICH9_XEN_NUM_IRQ_SOURCES);
++        pci_bus_map_irqs(pci_bus, xen_cmn_pci_slot_get_pirq);
++    } else {
++        pci_bus_irqs(pci_bus, ich9_lpc_set_irq, d, ICH9_LPC_NB_PIRQS);
++        pci_bus_map_irqs(pci_bus, ich9_lpc_map_irq);
++        pci_bus_set_route_irq_fn(pci_bus, ich9_route_intx_pin_to_irq);
++    }
+ 
+     ich9_lpc_pm_init(lpc);
+ }
+diff --git a/include/hw/southbridge/ich9.h b/include/hw/southbridge/ich9.h
+index fd01649d04..07b84d5227 100644
+--- a/include/hw/southbridge/ich9.h
++++ b/include/hw/southbridge/ich9.h
+@@ -130,6 +130,7 @@ struct ICH9LPCState {
+ 
+ #define ICH9_A2_LPC_REVISION                    0x2
+ #define ICH9_LPC_NB_PIRQS                       8       /* PCI A-H */
++#define ICH9_XEN_NUM_IRQ_SOURCES                128
+ 
+ #define ICH9_LPC_PMBASE                         0x40
+ #define ICH9_LPC_PMBASE_BASE_ADDRESS_MASK       ICH9_MASK(32, 15, 7)
+diff --git a/include/hw/xen/xen.h b/include/hw/xen/xen.h
+index ecb89ecfc1..d9568ae27d 100644
+--- a/include/hw/xen/xen.h
++++ b/include/hw/xen/xen.h
+@@ -38,9 +38,9 @@ extern enum xen_mode xen_mode;
+ extern bool xen_domid_restrict;
+ extern bool xen_is_stubdomain;
+ 
+-int xen_pci_slot_get_pirq(PCIDevice *pci_dev, int irq_num);
++int xen_cmn_pci_slot_get_pirq(PCIDevice *pci_dev, int irq_num);
+ int xen_set_pci_link_route(uint8_t link, uint8_t irq);
+-void xen_intx_set_irq(void *opaque, int irq_num, int level);
++void xen_cmn_set_irq(void *opaque, int irq_num, int level);
+ void xen_hvm_inject_msi(uint64_t addr, uint32_t data);
+ int xen_is_pirq_msi(uint32_t msi_data);
+ 
+diff --git a/stubs/xen-hw-stub.c b/stubs/xen-hw-stub.c
+index 6cf0e9a4c1..4abc608338 100644
+--- a/stubs/xen-hw-stub.c
++++ b/stubs/xen-hw-stub.c
+@@ -10,12 +10,12 @@
+ #include "hw/xen/xen.h"
+ #include "hw/xen/xen-x86.h"
+ 
+-int xen_pci_slot_get_pirq(PCIDevice *pci_dev, int irq_num)
++int xen_cmn_pci_slot_get_pirq(PCIDevice *pci_dev, int irq_num)
+ {
+     return -1;
+ }
+ 
+-void xen_intx_set_irq(void *opaque, int irq_num, int level)
++void xen_cmn_set_irq(void *opaque, int irq_num, int level)
+ {
+ }
+ 
+-- 
+2.49.0
+

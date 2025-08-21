@@ -1,0 +1,92 @@
+From cd4088462ee9fe3c40ad12f7b7c07d2adefbe3c8 Mon Sep 17 00:00:00 2001
+From: Joel Upham <jupham125@gmail.com>
+Date: Tue, 20 Jun 2023 13:24:42 -0400
+Subject: [PATCH 08/23] xen/pt: determine the legacy/PCIe mode for a passed
+ through device
+
+Even if we have some real PCIe device being passed through to a guest,
+there are situations when we cannot use its PCIe features, primarily
+allowing to access extended (>256) config space.
+
+Basically, we can allow reading PCIe extended config space only if both
+the device and emulated system are PCIe-capable. So it's a combination
+of checks:
+- PCI Express capability presence
+- pci_is_express(device)
+- pci_bus_is_express(device bus)
+
+The AND-product of these checks is stored to pcie_enabled_dev flag
+in XenPCIPassthroughState for later use in functions like
+xen_pt_pci_config_access_check.
+
+This way we get consistent behavior when the same PCIe device being passed
+through to either i440 domain or Q35 one.
+
+Signed-off-by: Alexey Gerasimenko <x1917x@xxxxxxxxx>
+Signed-off-by: Joel Upham <jupham125@gmail.com>
+---
+ hw/xen/xen_pt.c | 28 ++++++++++++++++++++++++++--
+ hw/xen/xen_pt.h |  1 +
+ 2 files changed, 27 insertions(+), 2 deletions(-)
+
+diff --git a/hw/xen/xen_pt.c b/hw/xen/xen_pt.c
+index 118fe29167..eb4ff106f0 100644
+--- a/hw/xen/xen_pt.c
++++ b/hw/xen/xen_pt.c
+@@ -729,6 +729,21 @@ static const MemoryListener xen_pt_io_listener = {
+     .priority = MEMORY_LISTENER_PRIORITY_ACCEL,
+ };
+ 
++static inline bool xen_pt_dev_is_pcie_mode(PCIDevice *d)
++{
++    XenPCIPassthroughState *s = XEN_PT_DEVICE(d);
++    PCIBus *bus = pci_get_bus(d);
++
++    if (bus != NULL) {
++        if (pci_is_express(d) && pci_bus_is_express(bus) &&
++            xen_host_pci_find_next_cap(&s->real_device, 0, PCI_CAP_ID_EXP)) {
++            return true;
++        }
++    }
++
++    return false;
++}
++
+ /* destroy. */
+ static void xen_pt_destroy(PCIDevice *d) {
+ 
+@@ -815,8 +830,17 @@ static void xen_pt_realize(PCIDevice *d, Error **errp)
+                    s->real_device.dev, s->real_device.func);
+     }
+ 
+-    /* Initialize virtualized PCI configuration (Extended 256 Bytes) */
+-    memset(d->config, 0, PCI_CONFIG_SPACE_SIZE);
++    s->pcie_enabled_dev = xen_pt_dev_is_pcie_mode(d);
++    if (s->pcie_enabled_dev) {
++        XEN_PT_LOG(d, "Host device %04x:%02x:%02x.%d passed thru "
++                   "in PCIe mode\n", s->real_device.domain,
++                    s->real_device.bus, s->real_device.dev,
++                    s->real_device.func);
++    }
++
++    /* Initialize virtualized PCI configuration space (256/4K bytes) */
++    memset(d->config, 0, pci_is_express(d) ? PCIE_CONFIG_SPACE_SIZE
++                                           : PCI_CONFIG_SPACE_SIZE);
+ 
+     s->memory_listener = xen_pt_memory_listener;
+     s->io_listener = xen_pt_io_listener;
+diff --git a/hw/xen/xen_pt.h b/hw/xen/xen_pt.h
+index 5557860aa0..33db209509 100644
+--- a/hw/xen/xen_pt.h
++++ b/hw/xen/xen_pt.h
+@@ -235,6 +235,7 @@ struct XenPCIPassthroughState {
+ 
+     PCIHostDeviceAddress hostaddr;
+     bool is_virtfn;
++    bool pcie_enabled_dev;
+     bool permissive;
+     bool permissive_warned;
+     bool power_mgmt;
+-- 
+2.49.0
+

@@ -1,0 +1,66 @@
+From 763cbb2e60718526bb322aef71533ae64503035d Mon Sep 17 00:00:00 2001
+From: Joel Upham <jupham125@gmail.com>
+Date: Tue, 20 Jun 2023 13:24:55 -0400
+Subject: [PATCH 21/23] pc/q35: setup q35 for xen
+
+Mirrored the init done for piix devices when xen is being used.
+This is needed for xen memory to be initialized and used with q35.
+
+Signed-off-by: Joel Upham <jupham125@gmail.com>
+---
+ hw/i386/pc_q35.c | 18 ++++++++++++++++--
+ 1 file changed, 16 insertions(+), 2 deletions(-)
+
+diff --git a/hw/i386/pc_q35.c b/hw/i386/pc_q35.c
+index e3aaac7628..c6d1dd9cf0 100644
+--- a/hw/i386/pc_q35.c
++++ b/hw/i386/pc_q35.c
+@@ -149,6 +149,7 @@ static void pc_q35_init(MachineState *machine)
+     MemoryRegion *system_memory = get_system_memory();
+     MemoryRegion *system_io = get_system_io();
+     MemoryRegion *pci_memory = g_new(MemoryRegion, 1);
++    MemoryRegion *ram_memory;
+     GSIState *gsi_state;
+     ISABus *isa_bus;
+     int i;
+@@ -203,6 +204,11 @@ static void pc_q35_init(MachineState *machine)
+     pc_machine_init_sgx_epc(pcms);
+     x86_cpus_init(x86ms, pcmc->default_cpu_version);
+ 
++    if (xen_enabled()) {
++        xen_hvm_init_pc(pcms, &ram_memory);
++        machine->ram = ram_memory;
++    }
++
+     if (kvm_enabled()) {
+         kvmclock_create(pcmc->kvmclock_create_always);
+     }
+@@ -216,7 +222,15 @@ static void pc_q35_init(MachineState *machine)
+ 
+     /* allocate ram and load rom/bios */
+     memory_region_init(pci_memory, NULL, "pci", UINT64_MAX);
+-    pc_memory_init(pcms, system_memory, pci_memory, pci_hole64_size);
++    if (!xen_enabled())
++        pc_memory_init(pcms, system_memory, pci_memory, pci_hole64_size);
++    else {
++        pc_system_flash_cleanup_unused(pcms);
++        if (machine->kernel_filename != NULL) {
++            /* For xen HVM direct kernel boot, load linux here */
++            xen_load_linux(pcms);
++        }
++    }
+ 
+     object_property_add_child(OBJECT(machine), "q35", phb);
+     object_property_set_link(phb, PCI_HOST_PROP_RAM_MEM,
+@@ -293,7 +307,7 @@ static void pc_q35_init(MachineState *machine)
+ 
+     assert(pcms->vmport != ON_OFF_AUTO__MAX);
+     if (pcms->vmport == ON_OFF_AUTO_AUTO) {
+-        pcms->vmport = ON_OFF_AUTO_ON;
++        pcms->vmport = xen_enabled() ? ON_OFF_AUTO_OFF : ON_OFF_AUTO_ON;
+     }
+ 
+     /* init basic PC hardware */
+-- 
+2.49.0
+

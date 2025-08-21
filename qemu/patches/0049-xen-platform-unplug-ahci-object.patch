@@ -1,0 +1,113 @@
+From b88d77e9302d8055f0948af489fd0d41d195a709 Mon Sep 17 00:00:00 2001
+From: Joel Upham <jupham125@gmail.com>
+Date: Tue, 20 Jun 2023 13:24:54 -0400
+Subject: [PATCH 20/23] xen platform: unplug ahci object
+
+This will unplug the ahci device when the Xen driver calls for an unplug.
+This has been tested to work in linux and Windows guests.
+When q35 is detected, we will remove the ahci controller
+with the hard disks.  In the libxl config, cdrom devices
+are put on a seperate ahci controller. This allows for 6 cdrom
+devices to be added, and 6 qemu hard disks.
+
+Signed-off-by: Joel Upham <jupham125@gmail.com>
+---
+ hw/i386/xen/xen_platform.c | 17 ++++++++++++++++-
+ hw/pci/pci.c               | 17 +++++++++++++++++
+ include/hw/pci/pci.h       |  3 +++
+ 3 files changed, 36 insertions(+), 1 deletion(-)
+
+diff --git a/hw/i386/xen/xen_platform.c b/hw/i386/xen/xen_platform.c
+index 708488af32..901fd80adc 100644
+--- a/hw/i386/xen/xen_platform.c
++++ b/hw/i386/xen/xen_platform.c
+@@ -34,6 +34,7 @@
+ #include "sysemu/block-backend.h"
+ #include "qemu/error-report.h"
+ #include "qemu/module.h"
++#include "include/hw/i386/pc.h"
+ #include "qom/object.h"
+ 
+ #ifdef CONFIG_XEN
+@@ -239,6 +240,9 @@ static void unplug_disks(PCIBus *b, PCIDevice *d, void *opaque)
+     case PCI_CLASS_STORAGE_IDE:
+     case PCI_CLASS_STORAGE_SATA:
+         pci_xen_ide_unplug(d, aux);
++        if (!aux) {
++            object_unparent(OBJECT(d));
++        }
+         break;
+ 
+     case PCI_CLASS_STORAGE_SCSI:
+@@ -251,6 +255,7 @@ static void unplug_disks(PCIBus *b, PCIDevice *d, void *opaque)
+         if (flags & UNPLUG_NVME_DISKS) {
+             object_unparent(OBJECT(d));
+         }
++        break;
+ 
+     default:
+         break;
+@@ -259,7 +264,17 @@ static void unplug_disks(PCIBus *b, PCIDevice *d, void *opaque)
+ 
+ static void pci_unplug_disks(PCIBus *bus, uint32_t flags)
+ {
+-    pci_for_each_device(bus, 0, unplug_disks, &flags);
++    PCIBus *q35 = find_q35();
++    if (q35) {
++        /* When q35 is detected, we will remove the ahci controller
++	 * with the hard disks.  In the libxl config, cdrom devices
++	 * are put on a seperate ahci controller. This allows for 6 cdrom
++	 * devices to be added, and 6 qemu hard disks.
++	 */
++        pci_function_for_one_bus(bus, unplug_disks, &flags);
++    } else {
++        pci_for_each_device(bus, 0, unplug_disks, &flags);
++    }
+ }
+ 
+ static void platform_fixed_ioport_writew(void *opaque, uint32_t addr, uint32_t val)
+diff --git a/hw/pci/pci.c b/hw/pci/pci.c
+index 839933bcee..5d4bde3672 100644
+--- a/hw/pci/pci.c
++++ b/hw/pci/pci.c
+@@ -1824,6 +1824,23 @@ void pci_for_each_device_reverse(PCIBus *bus, int bus_num,
+     }
+ }
+ 
++void pci_function_for_one_bus(PCIBus *bus,
++                          void (*fn)(PCIBus *b, PCIDevice *d, void *opaque),
++                          void *opaque)
++{
++    bus = pci_find_bus_nr(bus, 0);
++
++    if (bus) {
++        PCIDevice *d;
++
++        d = bus->devices[PCI_DEVFN(4,0)];
++        if (d) {
++            fn(bus, d, opaque);
++            return;
++        }
++    }
++}
++
+ void pci_for_each_device_under_bus(PCIBus *bus,
+                                    pci_bus_dev_fn fn, void *opaque)
+ {
+diff --git a/include/hw/pci/pci.h b/include/hw/pci/pci.h
+index eaa3fc99d8..988953d887 100644
+--- a/include/hw/pci/pci.h
++++ b/include/hw/pci/pci.h
+@@ -342,6 +342,9 @@ void pci_for_each_device_under_bus(PCIBus *bus,
+ void pci_for_each_device_under_bus_reverse(PCIBus *bus,
+                                            pci_bus_dev_fn fn,
+                                            void *opaque);
++void pci_function_for_one_bus(PCIBus *bus,
++                         void (*fn)(PCIBus *bus, PCIDevice *d, void *opaque),
++                         void *opaque);
+ void pci_for_each_bus_depth_first(PCIBus *bus, pci_bus_ret_fn begin,
+                                   pci_bus_fn end, void *parent_state);
+ PCIDevice *pci_get_function_0(PCIDevice *pci_dev);
+-- 
+2.49.0
+

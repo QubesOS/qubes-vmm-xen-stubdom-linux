@@ -1,0 +1,85 @@
+From baa08f99f47fb8c6fb077bdc804008c5971e5f33 Mon Sep 17 00:00:00 2001
+From: Joel Upham <jupham125@gmail.com>
+Date: Tue, 20 Jun 2023 13:24:37 -0400
+Subject: [PATCH 03/23] q35/acpi/xen: Provide ACPI PCI hotplug interface for
+ Xen on Q35
+
+This patch allows to use ACPI PCI hotplug functionality for Xen on Q35.
+All added code depends on xen_enabled(), so no functionality change for
+non-Xen usage.
+
+We need to call the acpi_set_pci_info function from ich9_pm_init as well,
+so it was made globally visible again (as it was before).
+
+Signed-off-by: Alexey Gerasimenko <x1917x@xxxxxxxxx>
+Signed-off-by: Joel Upham <jupham125@gmail.com>
+---
+ hw/acpi/ich9.c          | 10 ++++++++++
+ hw/acpi/pcihp.c         |  2 +-
+ include/hw/acpi/pcihp.h |  2 ++
+ 3 files changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/hw/acpi/ich9.c b/hw/acpi/ich9.c
+index 573d032e8e..937eb04ce7 100644
+--- a/hw/acpi/ich9.c
++++ b/hw/acpi/ich9.c
+@@ -39,6 +39,8 @@
+ #include "hw/southbridge/ich9.h"
+ #include "hw/mem/pc-dimm.h"
+ #include "hw/mem/nvdimm.h"
++#include "hw/xen/xen.h"
++#include "sysemu/xen.h"
+ 
+ //#define DEBUG
+ 
+@@ -67,6 +69,10 @@ static void ich9_gpe_writeb(void *opaque, hwaddr addr, uint64_t val,
+     ICH9LPCPMRegs *pm = opaque;
+     acpi_gpe_ioport_writeb(&pm->acpi_regs, addr, val);
+     acpi_update_sci(&pm->acpi_regs, pm->irq);
++
++    if (xen_enabled()) {
++        acpi_pcihp_reset(&pm->acpi_pci_hotplug);
++    }
+ }
+ 
+ static const MemoryRegionOps ich9_gpe_ops = {
+@@ -332,6 +338,10 @@ void ich9_pm_init(PCIDevice *lpc_pci, ICH9LPCPMRegs *pm, qemu_irq sci_irq)
+     pm->powerdown_notifier.notify = pm_powerdown_req;
+     qemu_register_powerdown_notifier(&pm->powerdown_notifier);
+ 
++    if (xen_enabled()) {
++            acpi_set_pci_info(true);
++    }
++
+     legacy_acpi_cpu_hotplug_init(pci_address_space_io(lpc_pci),
+         OBJECT(lpc_pci), &pm->gpe_cpu, ICH9_CPU_HOTPLUG_IO_BASE);
+ 
+diff --git a/hw/acpi/pcihp.c b/hw/acpi/pcihp.c
+index a5616f5800..76a161a5d3 100644
+--- a/hw/acpi/pcihp.c
++++ b/hw/acpi/pcihp.c
+@@ -99,7 +99,7 @@ static void *acpi_set_bsel(PCIBus *bus, void *opaque)
+     return info;
+ }
+ 
+-static void acpi_set_pci_info(bool has_bridge_hotplug)
++void acpi_set_pci_info(bool has_bridge_hotplug)
+ {
+     static bool bsel_is_set;
+     Object *host = acpi_get_i386_pci_host();
+diff --git a/include/hw/acpi/pcihp.h b/include/hw/acpi/pcihp.h
+index ac21a95913..73b2d5e7db 100644
+--- a/include/hw/acpi/pcihp.h
++++ b/include/hw/acpi/pcihp.h
+@@ -72,6 +72,8 @@ void acpi_pcihp_device_unplug_request_cb(HotplugHandler *hotplug_dev,
+ /* Called on reset */
+ void acpi_pcihp_reset(AcpiPciHpState *s);
+ 
++void acpi_set_pci_info(bool has_bridge_hotplug);
++
+ void build_append_pcihp_slots(Aml *parent_scope, PCIBus *bus);
+ 
+ extern const VMStateDescription vmstate_acpi_pcihp_pci_status;
+-- 
+2.49.0
+

@@ -1,0 +1,225 @@
+From 2fe82489996ae259c05ed5f4a86814d3bee509da Mon Sep 17 00:00:00 2001
+From: Joel Upham <jupham125@gmail.com>
+Date: Tue, 20 Jun 2023 13:24:48 -0400
+Subject: [PATCH 14/23] xen/pt: add fixed-size PCIe Extended Capabilities
+ descriptors
+
+This adds description structures for all fixed-size PCIe Extended
+Capabilities.
+
+For every capability register group, only 2 registers are emulated
+currently: Capability ID (16 bit) and Next Capability Offset/Version (16
+bit). Both needed to implement selective capability hiding. All other
+registers are passed through at the moment (unless they belong to
+a "hardwired" capability which is hidden)
+
+Signed-off-by: Alexey Gerasimenko <x1917x@xxxxxxxxx>
+Signed-off-by: Joel Upham <jupham125@gmail.com>
+---
+ hw/xen/xen_pt_config_init.c | 183 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 183 insertions(+)
+
+diff --git a/hw/xen/xen_pt_config_init.c b/hw/xen/xen_pt_config_init.c
+index 8c35b55b2b..080d3d5daa 100644
+--- a/hw/xen/xen_pt_config_init.c
++++ b/hw/xen/xen_pt_config_init.c
+@@ -1738,6 +1738,37 @@ static XenPTRegInfo xen_pt_ext_cap_emu_reg_vendor[] = {
+         .size = 0,
+     },
+ };
++
++/* Common reg static information table for all passthru-type
++ * PCIe Extended Capabilities. Only Extended Cap ID and
++ * Next pointer are handled (to support capability hiding).
++ */
++static XenPTRegInfo xen_pt_ext_cap_emu_reg_dummy[] = {
++    {
++        .offset     = XEN_PCIE_CAP_ID,
++        .size       = 2,
++        .init_val   = 0x0000,
++        .ro_mask    = 0xFFFF,
++        .emu_mask   = 0xFFFF,
++        .init       = xen_pt_ext_cap_capid_reg_init,
++        .u.w.read   = xen_pt_word_reg_read,
++        .u.w.write  = xen_pt_word_reg_write,
++    },
++    {
++        .offset     = XEN_PCIE_CAP_LIST_NEXT,
++        .size       = 2,
++        .init_val   = 0x0000,
++        .ro_mask    = 0xFFFF,
++        .emu_mask   = 0xFFFF,
++        .init       = xen_pt_ext_cap_ptr_reg_init,
++        .u.w.read   = xen_pt_word_reg_read,
++        .u.w.write  = xen_pt_word_reg_write,
++    },
++    {
++        .size = 0,
++    },
++};
++
+ /****************************
+  * Capabilities
+  */
+@@ -2014,6 +2045,158 @@ static const XenPTRegGroupInfo xen_pt_emu_reg_grps[] = {
+         .size_init   = xen_pt_ext_cap_vendor_size_init,
+         .emu_regs    = xen_pt_ext_cap_emu_reg_vendor,
+     },
++    /* Device Serial Number Extended Capability reg group */
++    {
++        .grp_id     = PCIE_EXT_CAP_ID(PCI_EXT_CAP_ID_DSN),
++        .grp_type   = XEN_PT_GRP_TYPE_EMU,
++        .grp_size   = PCI_EXT_CAP_DSN_SIZEOF,       /*0x0C*/
++        .size_init  = xen_pt_reg_grp_size_init,
++        .emu_regs   = xen_pt_ext_cap_emu_reg_dummy,
++    },
++    /* Power Budgeting Extended Capability reg group */
++    {
++        .grp_id     = PCIE_EXT_CAP_ID(PCI_EXT_CAP_ID_PWR),
++        .grp_type   = XEN_PT_GRP_TYPE_EMU,
++        .grp_size   = PCI_EXT_CAP_PWR_SIZEOF,       /*0x10*/
++        .size_init  = xen_pt_reg_grp_size_init,
++        .emu_regs   = xen_pt_ext_cap_emu_reg_dummy,
++    },
++    /* Root Complex Internal Link Control Extended Capability reg group */
++    {
++        .grp_id     = PCIE_EXT_CAP_ID(PCI_EXT_CAP_ID_RCILC),
++        .grp_type   = XEN_PT_GRP_TYPE_EMU,
++        .grp_size   = 0x0C,
++        .size_init  = xen_pt_reg_grp_size_init,
++        .emu_regs   = xen_pt_ext_cap_emu_reg_dummy,
++    },
++    /* Root Complex Event Collector Extended Capability reg group */
++    {
++        .grp_id     = PCIE_EXT_CAP_ID(PCI_EXT_CAP_ID_RCEC),
++        .grp_type   = XEN_PT_GRP_TYPE_EMU,
++        .grp_size   = 0x08,
++        .size_init  = xen_pt_reg_grp_size_init,
++        .emu_regs   = xen_pt_ext_cap_emu_reg_dummy,
++    },
++    /* Root Complex Register Block Extended Capability reg group */
++    {
++        .grp_id     = PCIE_EXT_CAP_ID(PCI_EXT_CAP_ID_RCRB),
++        .grp_type   = XEN_PT_GRP_TYPE_EMU,
++        .grp_size   = 0x14,
++        .size_init  = xen_pt_reg_grp_size_init,
++        .emu_regs   = xen_pt_ext_cap_emu_reg_dummy,
++    },
++    /* Configuration Access Correlation Extended Capability reg group */
++    {
++        .grp_id     = PCIE_EXT_CAP_ID(PCI_EXT_CAP_ID_CAC),
++        .grp_type   = XEN_PT_GRP_TYPE_EMU,
++        .grp_size   = 0x08,
++        .size_init  = xen_pt_reg_grp_size_init,
++        .emu_regs   = xen_pt_ext_cap_emu_reg_dummy,
++    },
++    /* Alternate Routing ID Extended Capability reg group */
++    {
++        .grp_id     = PCIE_EXT_CAP_ID(PCI_EXT_CAP_ID_ARI),
++        .grp_type   = XEN_PT_GRP_TYPE_EMU,
++        .grp_size   = PCI_EXT_CAP_ARI_SIZEOF,
++        .size_init  = xen_pt_reg_grp_size_init,
++        .emu_regs   = xen_pt_ext_cap_emu_reg_dummy,
++    },
++    /* Address Translation Services Extended Capability reg group */
++    {
++        .grp_id     = PCIE_EXT_CAP_ID(PCI_EXT_CAP_ID_ATS),
++        .grp_type   = XEN_PT_GRP_TYPE_EMU,
++        .grp_size   = PCI_EXT_CAP_ATS_SIZEOF,
++        .size_init  = xen_pt_reg_grp_size_init,
++        .emu_regs   = xen_pt_ext_cap_emu_reg_dummy,
++    },
++    /* Single Root I/O Virtualization Extended Capability reg group */
++    {
++        .grp_id     = PCIE_EXT_CAP_ID(PCI_EXT_CAP_ID_SRIOV),
++        .grp_type   = XEN_PT_GRP_TYPE_EMU,
++        .grp_size   = PCI_EXT_CAP_SRIOV_SIZEOF,
++        .size_init  = xen_pt_reg_grp_size_init,
++        .emu_regs   = xen_pt_ext_cap_emu_reg_dummy,
++    },
++    /* Page Request Interface Extended Capability reg group */
++    {
++        .grp_id     = PCIE_EXT_CAP_ID(PCI_EXT_CAP_ID_PRI),
++        .grp_type   = XEN_PT_GRP_TYPE_EMU,
++        .grp_size   = PCI_EXT_CAP_PRI_SIZEOF,
++        .size_init  = xen_pt_reg_grp_size_init,
++        .emu_regs   = xen_pt_ext_cap_emu_reg_dummy,
++    },
++    /* Latency Tolerance Reporting Extended Capability reg group */
++    {
++        .grp_id     = PCIE_EXT_CAP_ID(PCI_EXT_CAP_ID_LTR),
++        .grp_type   = XEN_PT_GRP_TYPE_EMU,
++        .grp_size   = PCI_EXT_CAP_LTR_SIZEOF,
++        .size_init  = xen_pt_reg_grp_size_init,
++        .emu_regs   = xen_pt_ext_cap_emu_reg_dummy,
++    },
++    /* Secondary PCIe Capability Extended Capability reg group */
++    {
++        .grp_id     = PCIE_EXT_CAP_ID(PCI_EXT_CAP_ID_SECPCI),
++        .grp_type   = XEN_PT_GRP_TYPE_EMU,
++        .grp_size   = 0x10,
++        .size_init  = xen_pt_reg_grp_size_init,
++        .emu_regs   = xen_pt_ext_cap_emu_reg_dummy,
++    },
++    /* Process Address Space ID Extended Capability reg group */
++    {
++        .grp_id     = PCIE_EXT_CAP_ID(PCI_EXT_CAP_ID_PASID),
++        .grp_type   = XEN_PT_GRP_TYPE_EMU,
++        .grp_size   = PCI_EXT_CAP_PASID_SIZEOF,
++        .size_init  = xen_pt_reg_grp_size_init,
++        .emu_regs   = xen_pt_ext_cap_emu_reg_dummy,
++    },
++    /* L1 PM Substates Extended Capability reg group */
++    {
++        .grp_id     = PCIE_EXT_CAP_ID(PCI_EXT_CAP_ID_L1SS),
++        .grp_type   = XEN_PT_GRP_TYPE_EMU,
++        .grp_size   = 0x10,
++        .size_init  = xen_pt_reg_grp_size_init,
++        .emu_regs   = xen_pt_ext_cap_emu_reg_dummy,
++    },
++    /* Precision Time Measurement Extended Capability reg group */
++    {
++        .grp_id     = PCIE_EXT_CAP_ID(PCI_EXT_CAP_ID_PTM),
++        .grp_type   = XEN_PT_GRP_TYPE_EMU,
++        .grp_size   = 0x0C,
++        .size_init  = xen_pt_reg_grp_size_init,
++        .emu_regs   = xen_pt_ext_cap_emu_reg_dummy,
++    },
++    /* M-PCIe Extended Capability reg group */
++    {
++        .grp_id     = PCIE_EXT_CAP_ID(0x20),
++        .grp_type   = XEN_PT_GRP_TYPE_EMU,
++        .grp_size   = 0x1C,
++        .size_init  = xen_pt_reg_grp_size_init,
++        .emu_regs   = xen_pt_ext_cap_emu_reg_dummy,
++    },
++    /* LN Requester (LNR) Extended Capability reg group */
++    {
++        .grp_id     = PCIE_EXT_CAP_ID(0x1C),
++        .grp_type   = XEN_PT_GRP_TYPE_EMU,
++        .grp_size   = 0x08,
++        .size_init  = xen_pt_reg_grp_size_init,
++        .emu_regs   = xen_pt_ext_cap_emu_reg_dummy,
++    },
++    /* Function Readiness Status (FRS) Extended Capability reg group */
++    {
++        .grp_id     = PCIE_EXT_CAP_ID(0x21),
++        .grp_type   = XEN_PT_GRP_TYPE_EMU,
++        .grp_size   = 0x10,
++        .size_init  = xen_pt_reg_grp_size_init,
++        .emu_regs   = xen_pt_ext_cap_emu_reg_dummy,
++    },
++    /* Readiness Time Extended Capability reg group */
++    {
++        .grp_id     = PCIE_EXT_CAP_ID(0x22),
++        .grp_type   = XEN_PT_GRP_TYPE_EMU,
++        .grp_size   = 0x0C,
++        .size_init  = xen_pt_reg_grp_size_init,
++        .emu_regs   = xen_pt_ext_cap_emu_reg_dummy,
++    },
+     {
+         .grp_size = 0,
+     },
+-- 
+2.49.0
+
