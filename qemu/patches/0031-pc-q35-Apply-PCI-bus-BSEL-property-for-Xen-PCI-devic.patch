@@ -1,0 +1,79 @@
+From 914c435caab082c4b7dc37973dd550c30251199a Mon Sep 17 00:00:00 2001
+From: Joel Upham <jupham125@gmail.com>
+Date: Tue, 20 Jun 2023 13:24:36 -0400
+Subject: [PATCH 02/23] pc/q35: Apply PCI bus BSEL property for Xen PCI device
+ hotplug
+
+On Q35 we still need to assign BSEL property to bus(es) for PCI device
+add/hotplug to work.
+Extend acpi_set_pci_info() function to support Q35 as well. This patch adds new (trivial)
+function find_q35() which returns root PCIBus object on Q35, in a way
+similar to what find_i440fx does.
+
+Signed-off-by: Alexey Gerasimenko <x1917x@xxxxxxxxx>
+Signed-off-by: Joel Upham <jupham125@gmail.com>
+---
+ hw/acpi/pcihp.c      | 4 +++-
+ hw/pci-host/q35.c    | 9 +++++++++
+ include/hw/i386/pc.h | 3 +++
+ 3 files changed, 15 insertions(+), 1 deletion(-)
+
+diff --git a/hw/acpi/pcihp.c b/hw/acpi/pcihp.c
+index 5f79c9016b..a5616f5800 100644
+--- a/hw/acpi/pcihp.c
++++ b/hw/acpi/pcihp.c
+@@ -40,6 +40,7 @@
+ #include "qapi/error.h"
+ #include "qom/qom-qobject.h"
+ #include "trace.h"
++#include "sysemu/xen.h"
+ 
+ #define ACPI_PCIHP_SIZE 0x0018
+ #define PCI_UP_BASE 0x0000
+@@ -84,7 +85,8 @@ static void *acpi_set_bsel(PCIBus *bus, void *opaque)
+     bool is_bridge = IS_PCI_BRIDGE(br);
+ 
+     /* hotplugged bridges can't be described in ACPI ignore them */
+-    if (qbus_is_hotpluggable(BUS(bus))) {
++    /* Xen requires hotplugging to the root device, even on the Q35 chipset */
++    if (qbus_is_hotpluggable(BUS(bus)) || xen_enabled()) {
+         if (!is_bridge || (!br->hotplugged && info->has_bridge_hotplug)) {
+             bus_bsel = g_malloc(sizeof *bus_bsel);
+ 
+diff --git a/hw/pci-host/q35.c b/hw/pci-host/q35.c
+index 0d7d4e3f08..8167d65d50 100644
+--- a/hw/pci-host/q35.c
++++ b/hw/pci-host/q35.c
+@@ -250,6 +250,15 @@ static void q35_host_initfn(Object *obj)
+                              qdev_prop_allow_set_link_before_realize, 0);
+ }
+ 
++PCIBus *find_q35(void)
++{
++    PCIHostState *s = OBJECT_CHECK(PCIHostState,
++                                   object_resolve_path("/machine/q35", NULL),
++                                   TYPE_PCI_HOST_BRIDGE);
++    return s ? s->bus : NULL;
++}
++
++
+ static const TypeInfo q35_host_info = {
+     .name       = TYPE_Q35_HOST_DEVICE,
+     .parent     = TYPE_PCIE_HOST_BRIDGE,
+diff --git a/include/hw/i386/pc.h b/include/hw/i386/pc.h
+index 27a68071d7..6aeb749512 100644
+--- a/include/hw/i386/pc.h
++++ b/include/hw/i386/pc.h
+@@ -198,6 +198,9 @@ void pc_system_parse_ovmf_flash(uint8_t *flash_ptr, size_t flash_size);
+ /* sgx.c */
+ void pc_machine_init_sgx_epc(PCMachineState *pcms);
+ 
++/* q35.c */
++PCIBus *find_q35(void);
++
+ extern GlobalProperty pc_compat_8_2[];
+ extern const size_t pc_compat_8_2_len;
+ 
+-- 
+2.49.0
+
