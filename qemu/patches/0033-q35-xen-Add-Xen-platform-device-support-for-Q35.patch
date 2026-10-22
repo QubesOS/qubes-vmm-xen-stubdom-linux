@@ -1,0 +1,135 @@
+From a72c5a08534732f980d58a7ad186f1c68dd19adb Mon Sep 17 00:00:00 2001
+From: Joel Upham <jupham125@gmail.com>
+Date: Tue, 20 Jun 2023 13:24:38 -0400
+Subject: [PATCH 04/23] q35/xen: Add Xen platform device support for Q35
+
+Current Xen/QEMU method to control Xen Platform device on i440 is a bit
+odd -- enabling/disabling Xen platform device actually modifies the QEMU
+emulated machine type, namely xenfv <--> pc.
+
+In order to avoid multiplying machine types, use a new way to control Xen
+Platform device for QEMU -- "xen-platform-dev" machine property (bool).
+To maintain backward compatibility with existing Xen/QEMU setups, this
+is only applicable to q35 machine currently. i440 emulation still uses the
+old method (i.e. xenfv/pc machine selection) to control Xen Platform
+device, this may be changed later to xen-platform-dev property as well.
+
+This way we can use a single machine type (q35) and change just
+xen-platform-dev value to on/off to control Xen platform device.
+
+Signed-off-by: Alexey Gerasimenko <x1917x@xxxxxxxxx>
+Signed-off-by: Joel Upham <jupham125@gmail.com>
+---
+ hw/core/machine.c   | 19 +++++++++++++++++++
+ hw/i386/pc_q35.c    | 19 ++++++++++++++++++-
+ include/hw/boards.h |  1 +
+ qemu-options.hx     |  1 +
+ 4 files changed, 39 insertions(+), 1 deletion(-)
+
+diff --git a/hw/core/machine.c b/hw/core/machine.c
+index 4273de16a0..791b28f6bc 100644
+--- a/hw/core/machine.c
++++ b/hw/core/machine.c
+@@ -470,6 +470,20 @@ static void machine_set_graphics(Object *obj, bool value, Error **errp)
+     ms->enable_graphics = value;
+ }
+ 
++static bool machine_get_xen_platform_dev(Object *obj, Error **errp)
++{
++    MachineState *ms = MACHINE(obj);
++
++    return ms->xen_platform_dev;
++}
++
++static void machine_set_xen_platform_dev(Object *obj, bool value, Error **errp)
++{
++    MachineState *ms = MACHINE(obj);
++
++    ms->xen_platform_dev = value;
++}
++
+ static char *machine_get_firmware(Object *obj, Error **errp)
+ {
+     MachineState *ms = MACHINE(obj);
+@@ -1052,6 +1066,11 @@ static void machine_class_init(ObjectClass *oc, void *data)
+     object_class_property_set_description(oc, "graphics",
+         "Set on/off to enable/disable graphics emulation");
+ 
++    object_class_property_add_bool(oc, "xen-platform-dev",
++        machine_get_xen_platform_dev, machine_set_xen_platform_dev);
++    object_class_property_set_description(oc, "xen-platform-dev",
++        "Set on/off to enable/disable Xen Platform device");
++
+     object_class_property_add_str(oc, "firmware",
+         machine_get_firmware, machine_set_firmware);
+     object_class_property_set_description(oc, "firmware",
+diff --git a/hw/i386/pc_q35.c b/hw/i386/pc_q35.c
+index c7bc8a2041..e3aaac7628 100644
+--- a/hw/i386/pc_q35.c
++++ b/hw/i386/pc_q35.c
+@@ -59,11 +59,25 @@
+ #include "hw/hyperv/vmbus-bridge.h"
+ #include "hw/mem/nvdimm.h"
+ #include "hw/i386/acpi-build.h"
++#include "hw/xen/xen-x86.h"
++#include "sysemu/xen.h"
+ #include "target/i386/cpu.h"
+ 
+ /* ICH9 AHCI has 6 ports */
+ #define MAX_SATA_PORTS     6
+ 
++static void q35_xen_hvm_init(MachineState *machine)
++{
++    PCMachineState *pcms = PC_MACHINE(machine);
++
++    if (xen_enabled()) {
++        /* check if Xen Platform device is enabled */
++        if (machine->xen_platform_dev) {
++            pci_create_simple(pcms->pcibus, -1, "xen-platform");
++        }
++    }
++}
++
+ static GlobalProperty pc_q35_compat_defaults[] = {
+     { TYPE_VIRTIO_IOMMU_PCI, "aw-bits", "39" },
+ };
+@@ -262,8 +276,11 @@ static void pc_q35_init(MachineState *machine)
+                                    "true", true);
+     }
+ 
+-    isa_bus = ISA_BUS(qdev_get_child_bus(lpc_dev, "isa.0"));
++    if (xen_enabled()) {
++        q35_xen_hvm_init(machine);
++    }
+ 
++    isa_bus = ISA_BUS(qdev_get_child_bus(lpc_dev, "isa.0"));
+     if (x86ms->pic == ON_OFF_AUTO_ON || x86ms->pic == ON_OFF_AUTO_AUTO) {
+         pc_i8259_create(isa_bus, gsi_state->i8259_irq);
+     }
+diff --git a/include/hw/boards.h b/include/hw/boards.h
+index 8b8f6d5c00..6b06eb13d5 100644
+--- a/include/hw/boards.h
++++ b/include/hw/boards.h
+@@ -372,6 +372,7 @@ struct MachineState {
+     bool mem_merge;
+     bool usb;
+     bool usb_disabled;
++    bool xen_platform_dev;
+     char *firmware;
+     bool iommu;
+     bool suppress_vmdesc;
+diff --git a/qemu-options.hx b/qemu-options.hx
+index c5741942a2..2ee9c5d2e0 100644
+--- a/qemu-options.hx
++++ b/qemu-options.hx
+@@ -32,6 +32,7 @@ DEF("machine", HAS_ARG, QEMU_OPTION_machine, \
+     "                vmport=on|off|auto controls emulation of vmport (default: auto)\n"
+     "                dump-guest-core=on|off include guest memory in a core dump (default=on)\n"
+     "                mem-merge=on|off controls memory merge support (default: on)\n"
++    "                xen-platform-dev=on|off controls Xen Platform device (default=off)\n"
+     "                aes-key-wrap=on|off controls support for AES key wrapping (default=on)\n"
+     "                dea-key-wrap=on|off controls support for DEA key wrapping (default=on)\n"
+     "                suppress-vmdesc=on|off disables self-describing migration (default=off)\n"
+-- 
+2.49.0
+

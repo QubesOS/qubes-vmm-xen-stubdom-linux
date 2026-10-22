@@ -1,0 +1,78 @@
+From 7e8e87b48930788c05f95b9c40f22374ad7c4836 Mon Sep 17 00:00:00 2001
+From: Joel Upham <jupham125@gmail.com>
+Date: Tue, 20 Jun 2023 13:24:46 -0400
+Subject: [PATCH 12/23] xen/pt: allow to hide PCIe Extended Capabilities
+
+We need to hide some unwanted PCI/PCIe capabilities for passed through
+devices.
+Normally we do this by marking the capability register group
+as XEN_PT_GRP_TYPE_HARDWIRED which exclude this capability from the
+capability list and returns zeroes on attempts to read capability body.
+Skipping the capability in the linked list of capabilities can be done
+by changing Next Capability register to skip one or many unwanted
+capabilities.
+
+One difference between PCI and PCIe Extended capabilities is that we don't
+have the list head field anymore. PCIe Extended capabilities always start
+at offset 0x100 if they're present. Unfortunately, there are typically
+only few PCIe extended capabilities present which means there is a chance
+that some capability we want to hide will reside at offset 0x100 in PCIe
+config space.
+
+The simplest way to hide such capabilities from guest OS or drivers
+is faking their capability ID value.
+
+This patch adds the Capability ID register handler which checks
+- if the capability to which this register belong starts at offset 0x100
+  in PCIe config space
+- if this capability is marked as XEN_PT_GRP_TYPE_HARDWIRED
+
+If it is the case, then a fake Capability ID value is returned.
+
+Signed-off-by: Alexey Gerasimenko <x1917x@xxxxxxxxx>
+Signed-off-by: Joel Upham <jupham125@gmail.com>
+---
+ hw/xen/xen_pt.c | 11 ++++++++++-
+ hw/xen/xen_pt.h |  4 ++++
+ 2 files changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/hw/xen/xen_pt.c b/hw/xen/xen_pt.c
+index 1ef1de3f5b..be4b49b346 100644
+--- a/hw/xen/xen_pt.c
++++ b/hw/xen/xen_pt.c
+@@ -165,7 +165,16 @@ static uint32_t xen_pt_pci_read_config(PCIDevice *d, uint32_t addr, int len)
+     reg_grp_entry = xen_pt_find_reg_grp(s, addr);
+     if (reg_grp_entry) {
+         /* check 0-Hardwired register group */
+-        if (reg_grp_entry->reg_grp->grp_type == XEN_PT_GRP_TYPE_HARDWIRED) {
++        if (reg_grp_entry->reg_grp->grp_type == XEN_PT_GRP_TYPE_HARDWIRED &&
++            /*
++             * For PCIe Extended Capabilities we need to emulate
++             * CapabilityID and NextCapability/Version registers for a
++             * hardwired reg group located at the offset 0x100 in PCIe
++             * config space. This allows us to hide the first extended
++             * capability as well.
++             */
++            !(reg_grp_entry->base_offset == PCI_CONFIG_SPACE_SIZE &&
++            ranges_overlap(addr, len, 0x100, 4))) {
+             /* no need to emulate, just return 0 */
+             val = 0;
+             goto exit;
+diff --git a/hw/xen/xen_pt.h b/hw/xen/xen_pt.h
+index d3f0a2a9a9..f588e35239 100644
+--- a/hw/xen/xen_pt.h
++++ b/hw/xen/xen_pt.h
+@@ -94,6 +94,10 @@ typedef int (*xen_pt_conf_byte_read)
+ 
+ #define XEN_PCI_INTEL_OPREGION 0xfc
+ 
++#define XEN_PCIE_CAP_ID 0
++#define XEN_PCIE_CAP_LIST_NEXT 2
++#define XEN_PCIE_FAKE_CAP_ID_BASE 0xFE00
++
+ #define XEN_PCI_IGD_DOMAIN 0
+ #define XEN_PCI_IGD_BUS 0
+ #define XEN_PCI_IGD_DEV 2
+-- 
+2.49.0
+
