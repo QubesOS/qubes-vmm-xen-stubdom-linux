@@ -25,10 +25,10 @@ index 881d774fb6..10ce61585d 100644
              if (pci_bus_devfn_available(bus, devfn) &&
                     !pci_bus_devfn_reserved(bus, devfn)) {
                  goto found;
-diff --git a/include/sysemu/sysemu.h b/include/sysemu/sysemu.h
+diff --git a/include/system/system.h b/include/system/system.h
 index 25be2a692e..31971e10a8 100644
---- a/include/sysemu/sysemu.h
-+++ b/include/sysemu/sysemu.h
+--- a/include/system/system.h
++++ b/include/system/system.h
 @@ -29,7 +29,7 @@ extern int autostart;
  
  typedef enum {

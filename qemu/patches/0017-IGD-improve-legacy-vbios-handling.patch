@@ -102,7 +102,7 @@ index 0aed3bb6fd..da1a784be3 100644
 +        XEN_PT_LOG(&s->dev, "Failed to unmap host vbios: %s\n", strerror(errno));
 +    }
 +
-+    cpu_physical_memory_rw(vbios_addr, guest_bios, bios_size, 1);
++    physical_memory_write(vbios_addr, guest_bios, bios_size);
 +    memory_region_set_address(&s->dev.rom, vbios_addr);
 +    pci_register_bar(&s->dev, PCI_ROM_SLOT, PCI_BASE_ADDRESS_SPACE_MEMORY, &s->dev.rom);
 +    s->dev.has_rom = true;
@@ -129,7 +129,7 @@ index 0aed3bb6fd..da1a784be3 100644
 @@ -222,6 +263,7 @@ void xen_pt_setup_vga(XenPCIPassthroughState *s, XenHostPCIDevice *dev,
  
      /* Currently we fixed this address as a primary for legacy BIOS. */
-     cpu_physical_memory_write(0xc0000, bios, bios_size);
+     physical_memory_write(0xc0000, bios, bios_size);
 +    XEN_PT_LOG(&s->dev, "Legacy VBIOS registered\n");
  }
  

@@ -1,0 +1,47 @@
+From 6ccf1e73fc65a7ad52eca1f8ecfa925a03acd987 Mon Sep 17 00:00:00 2001
+From: Dario Faggioli <dfaggioli@suse.com>
+Date: Thu, 30 Jul 2026 18:22:38 +0200
+Subject: [PATCH] hw/i386/pc: xen: reinstate the "xenfv" machine alias
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Commit 7d2778dea32a4924a469f1cc5767042c8f5b4eea ("hw/i386/pc:
+Remove deprecated pc-q35/pc-i440fx/xenfv 3.1 machines") removed
+the Xen machine type that was providing the "xenfv" alias. As a
+consequence, since the tools are apparently relying on such alias,
+we're getting this, as soon as one tries to start a Xen (HVM) VM:
+
+  qemu-system-i386: unsupported machine type: "xenfv"
+  Use -machine help to list supported machines
+
+Reinstate the alias and let it point to the only Xen machine we
+still have.
+
+Cc: qemu-stable@nongnu.org
+Fixes: 7d2778dea3 Remove deprecated pc-q35/pc-i440fx/xenfv 3.1 machines
+Signed-off-by: Dario Faggioli <dfaggioli@suse.com>
+Reviewed-by: Daniel P. Berrangé <berrange@redhat.com>
+Acked-by: Stefano Stabellini <sstabellini@kernel.org>
+Reviewed-by: Philippe Mathieu-Daudé <philmd@oss.qualcomm.com>
+Message-ID: <20260730162238.3308286-1-dfaggioli@suse.com>
+Signed-off-by: Philippe Mathieu-Daudé <philmd@oss.qualcomm.com>
+---
+ hw/i386/pc_piix.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/hw/i386/pc_piix.c b/hw/i386/pc_piix.c
+index 223a19cc4b..a929cc4dec 100644
+--- a/hw/i386/pc_piix.c
++++ b/hw/i386/pc_piix.c
+@@ -667,6 +667,7 @@ static void xenfv_machine_4_2_options(MachineClass *m)
+ {
+     pc_i440fx_machine_4_2_options(m);
+     m->desc = "Xen Fully-virtualized PC";
++    m->alias = "xenfv";
+     m->max_cpus = HVM_MAX_VCPUS;
+     m->default_machine_opts = "accel=xen,suppress-vmdesc=on";
+ }
+-- 
+2.54.0
+
