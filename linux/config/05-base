@@ -83,4 +83,4 @@ CONFIG_LOCALVERSION="-xen-stubdom"
 CONFIG_DEFAULT_HOSTNAME="xen-stubdom"
 
 CONFIG_CMDLINE_BOOL=y
-CONFIG_CMDLINE="clocksource=tsc"
+CONFIG_CMDLINE="clocksource=tsc xen_privcmd.unrestricted"
