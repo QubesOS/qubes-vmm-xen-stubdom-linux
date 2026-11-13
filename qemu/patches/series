@@ -1,5 +1,4 @@
-0001-hw-xen-detect-when-running-inside-stubdomain.patch
-0002-xen-fix-stubdom-PCI-addr.patch
+0001-hw-i386-pc-xen-reinstate-the-xenfv-machine-alias.patch
 0004-QubesGUI-display-options.patch
 0005-hw-xen-xen_pt-Save-back-data-only-for-declared-regis.patch
 0006-Do-not-access-dev-mem-in-MSI-X-PCI-passthrough-on-Xe.patch
@@ -14,7 +13,6 @@
 0017-IGD-improve-legacy-vbios-handling.patch
 0018-IGD-move-enabling-opregion-access-to-libxl.patch
 0019-pc-bios-ignore-prebuilt-binaries.patch
-0020-Add-stubdom-xengt-support.patch
 0021-hw-xen-consider-PCI_CLASS_DISPLAY_OTHER-for-IGD-too.patch
 seabios-python3.patch
 seabios-svgamodes-Add-all-HD-and-QXGA-resolutions.patch

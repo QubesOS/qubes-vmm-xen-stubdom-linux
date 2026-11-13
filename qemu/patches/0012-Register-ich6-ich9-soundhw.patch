@@ -18,22 +18,24 @@ diff --git a/hw/audio/intel-hda.c b/hw/audio/intel-hda.c
 index b9ed231fe8..d6277916dc 100644
 --- a/hw/audio/intel-hda.c
 +++ b/hw/audio/intel-hda.c
-@@ -1321,6 +1321,20 @@ static int intel_hda_and_codec_init(PCIBus *bus, const char *audiodev)
-     return 0;
+@@ -1321,6 +1321,22 @@ static int intel_hda_and_codec_init(PCIBus *bus, const char *audiodev)
+     object_unref(intel_hda);
  }
  
-+static int intel_ich9_and_codec_init(PCIBus *bus, const char *audiodev)
++static void intel_ich9_and_codec_init(const char *audiodev)
 +{
-+    DeviceState *controller;
++    g_autoptr(QDict) props = qdict_new();
++    DeviceState *intel_hda, *codec;
 +    BusState *hdabus;
-+    DeviceState *codec;
++    
++    qdict_put_str(props, "driver", "ich9-intel-hda");
++    intel_hda = qdev_device_add_from_qdict(props, false, &error_fatal);
++    hdabus = QLIST_FIRST(&intel_hda->child_bus);
 +
-+    controller = DEVICE(pci_create_simple(bus, -1, "ich9-intel-hda"));
-+    hdabus = QLIST_FIRST(&controller->child_bus);
 +    codec = qdev_new("hda-duplex");
 +    qdev_prop_set_string(codec, "audiodev", audiodev);
 +    qdev_realize_and_unref(codec, hdabus, &error_fatal);
-+    return 0;
++    object_unref(intel_hda);
 +}
 +
  static void intel_hda_register_types(void)
@@ -42,25 +44,25 @@ index b9ed231fe8..d6277916dc 100644
 @@ -1329,6 +1342,8 @@ static void intel_hda_register_types(void)
      type_register_static(&intel_hda_info_ich9);
      type_register_static(&hda_codec_device_type_info);
-     pci_register_soundhw("hda", "Intel HD Audio", intel_hda_and_codec_init);
-+    pci_register_soundhw("ich6", "ich6 Intel HD Audio", intel_hda_and_codec_init);
-+    pci_register_soundhw("ich9", "ich9 Intel HD Audio", intel_ich9_and_codec_init);
+     audio_register_model_with_cb("hda", "Intel HD Audio", intel_hda_and_codec_init);
++    audio_register_model_with_cb("ich6", "ich6 Intel HD Audio", intel_hda_and_codec_init);
++    audio_register_model_with_cb("ich9", "ich9 Intel HD Audio", intel_ich9_and_codec_init);
  }
  
  type_init(intel_hda_register_types)
 diff --git a/hw/audio/soundhw.c b/hw/audio/soundhw.c
 index 94d9463e42..1a939f2bb6 100644
---- a/hw/audio/soundhw.c
-+++ b/hw/audio/soundhw.c
+--- a/hw/audio/model.c
++++ b/hw/audio/model.c
 @@ -40,7 +40,7 @@ struct soundhw {
-     int (*init_pci) (PCIBus *bus, const char *audiodev);
+     void (*init)(const char *audiodev);
  };
  
--static struct soundhw soundhw[9];
-+static struct soundhw soundhw[11];
- static int soundhw_count;
+-static struct audio_model audio_models[9];
++static struct audio_model audio_models[11];
+ static int audio_models_count;
  
- void pci_register_soundhw(const char *name, const char *descr,
+ void audio_register_model_with_cb(const char *name, const char *descr,
 -- 
 2.41.0
 

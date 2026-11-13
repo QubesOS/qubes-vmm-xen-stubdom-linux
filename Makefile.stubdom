@@ -185,7 +185,7 @@ build/qemu/.extracted: qemu-$(QEMU_VERSION).tar.xz
 	rm -rf build/qemu
 	mkdir -p build/qemu
 	tar -C build/qemu --strip-components=1 -xf $<
-	rm build/qemu/pc-bios/*.{rom,bin,dtb} # remove prebuilt binaries
+	rm build/qemu/pc-bios/dtb/*.dtb # remove prebuilt binaries
 	touch $@
 
 build/qemu/.patched: build/qemu/.extracted qemu/patches/series $(QEMU_PATCHES)
@@ -224,6 +224,7 @@ build/qemu/build/config.status: build/qemu/.patched build/qemu/.gui-agent-copied
 		--disable-guest-agent \
 		--disable-smartcard \
 		--disable-vnc \
+		--disable-qemu-vnc \
 		--disable-spice \
 		--enable-trace-backends=log \
 		--disable-gnutls \
@@ -250,7 +251,6 @@ build/qemu/build/config.status: build/qemu/.patched build/qemu/.gui-agent-copied
 		--disable-bzip2 \
 		--enable-seccomp \
 		--disable-coroutine-pool \
-		--disable-glusterfs \
 		--disable-tpm \
 		--disable-libssh \
 		--disable-numa \
@@ -262,7 +262,6 @@ build/qemu/build/config.status: build/qemu/.patched build/qemu/.gui-agent-copied
 		--disable-virglrenderer \
 		--disable-tcg \
 		--disable-crypto-afalg \
-		--disable-live-block-migration \
 		--disable-vhost-user \
 		--disable-vhost-crypto \
 		--disable-vdi \
@@ -274,6 +273,13 @@ build/qemu/build/config.status: build/qemu/.patched build/qemu/.gui-agent-copied
 		--disable-vvfat \
 		--disable-qed \
 		--disable-auth-pam \
+		--disable-nitro \
+		--disable-mshv \
+		--disable-passt \
+		--disable-igvm \
+		--disable-pvg \
+		--disable-libcbor \
+		--disable-qpl \
 		--enable-rng-none \
 		${QEMU_OPTIONS} \
 		--cxx=/non-existent \

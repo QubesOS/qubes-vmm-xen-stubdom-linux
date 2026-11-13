@@ -17,11 +17,12 @@ diff --git a/hw/i386/pc_piix.c b/hw/i386/pc_piix.c
 index ee46f1e1b3..e2d127cb4a 100644
 --- a/hw/i386/pc_piix.c
 +++ b/hw/i386/pc_piix.c
-@@ -69,6 +69,7 @@
+@@ -69,6 +69,8 @@
  #include "hw/i386/acpi-build.h"
  #include "kvm/kvm-cpu.h"
  #include "target/i386/cpu.h"
 +#include "hw/i386/fw_cfg.h"
++#include "hw/core/loader.h"
  
  #define XEN_IOAPIC_NUM_PIRQS 128ULL
  
@@ -34,7 +35,7 @@ index ee46f1e1b3..e2d127cb4a 100644
 +
 +            FWCfgState *fw_cfg;
 +
-+            fw_cfg = fw_cfg_init_io(FW_CFG_IO_BASE);
++            fw_cfg = fw_cfg_init_io_dma(FW_CFG_IO_BASE, &address_space_memory);
 +            rom_set_fw(fw_cfg);
 +
 +            x86ms->fw_cfg = fw_cfg;

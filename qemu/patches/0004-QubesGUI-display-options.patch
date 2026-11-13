@@ -24,10 +24,10 @@ index 37557c3442..3206bcb0ff 100644
 +++ b/hw/display/vga.c
 @@ -1618,6 +1618,8 @@ static void vga_draw_graphic(VGACommonState *s, int full_update)
      } else {
-         share_surface = false;
+         allocate_surface = true;
      }
 +    /* XXX: Qubes GUI can't use a shared buffer */
-+    share_surface = false;
++    allocate_surface = true;
  
      if (s->params.line_offset != s->last_line_offset ||
          disp_width != s->last_width ||
@@ -36,9 +36,9 @@ index 3e8b22d6c6..f3f0dfa5c3 100644
 --- a/include/ui/surface.h
 +++ b/include/ui/surface.h
 @@ -27,6 +27,7 @@ typedef struct DisplaySurface {
-     HANDLE handle;
-     uint32_t handle_offset;
  #endif
+     qemu_pixman_shareable share_handle;
+     uint32_t share_handle_offset;
 +    uint32_t *xen_refs;
  } DisplaySurface;
  
@@ -47,18 +47,18 @@ diff --git a/include/ui/console.h b/include/ui/console.h
 index 3e8b22d6c6..f3f0dfa5c3 100644
 --- a/include/ui/console.h
 +++ b/include/ui/console.h
-@@ -437,6 +438,11 @@ static inline pixman_format_code_t surface_format(DisplaySurface *s)
-     return s->format;
- }
+@@ -313,6 +313,11 @@ static inline pixman_format_code_t surface_format(DisplaySurface *s)
+ 
+ bool qemu_console_has_gl(QemuConsole *con);
  
 +static inline uint32_t *surface_xen_refs(DisplaySurface *s)
 +{
 +    return s->xen_refs;
 +}
 +
- typedef uint32_t console_ch_t;
- 
- static inline void console_write_ch(console_ch_t *dest, uint32_t ch)
+ enum {
+     GRAPHIC_FLAGS_NONE     = 0,
+ /* require a console/display with GL callbacks */
 diff --git a/meson.build b/meson.build
 index d6281c4f01..708a7f942b 100644
 --- a/meson.build
@@ -140,42 +140,54 @@ index 006616aa77..0950bc05d4 100644
    }
  }
  
-diff --git a/ui/console.c b/ui/console.c
-index bca610b72a..9d6131e3cf 100644
---- a/ui/console.c
-+++ b/ui/console.c
-@@ -24,6 +24,7 @@
- 
+diff --git a/ui/display-surface.c.orig b/ui/display-surface.c
+index 38e4085..ffbf346 100644
+--- a/ui/display-surface.c.orig
++++ b/ui/display-surface.c
+@@ -7,6 +7,7 @@
+  */
  #include "qemu/osdep.h"
  #include "ui/console.h"
 +#include "qubes-gui-qemu.h"
- #include "hw/qdev-core.h"
- #include "qapi/error.h"
- #include "qapi/qapi-commands-ui.h"
-@@ -1577,6 +1578,10 @@ DisplaySurface *qemu_create_displaysurface_from(int width, int height,
-     DisplaySurface *surface = g_new0(DisplaySurface, 1);
+ #include "ui/vgafont.h"
+ #include "trace.h"
  
-     trace_displaysurface_create_from(surface, width, height, format);
-+    if (!data)
+@@ -47,14 +47,14 @@
+                                                   width, height,
+                                                   (void *)data, linesize);
+     } else {
+-        qemu_pixman_image_new_shareable(&surface->image,
+-                                        &surface->share_handle,
+-                                        "displaysurface",
+-                                        format,
+-                                        width,
+-                                        height,
+-                                        linesize,
+-                                        &error_abort);
 +        data = qubesgui_alloc_surface_data(width, height, &surface->xen_refs);
-+    assert(data != NULL);
-+
-     surface->image = pixman_image_create_bits(format,
-                                               width, height,
-                                               (void *)data, linesize);
-diff --git a/ui/meson.build b/ui/meson.build
-index d81609fb0e..c86d533d97 100644
---- a/ui/meson.build
++        assert(data != NULL);
++        surface->image = pixman_image_create_bits(format,
++                                                  width, height,
++                                                  (void *)data, linesize);
++        pixman_image_set_destroy_function(surface->image,
++                                          qubesgui_free_image_data,
++                                          NULL);
+         surface->flags = QEMU_ALLOCATED_FLAG;
+     }
+ 
+diff --git a/ui/meson.build.orig b/ui/meson.build
+index d345f6c..fa0e6c6 100644
+--- a/ui/meson.build.orig
 +++ b/ui/meson.build
-@@ -148,6 +148,8 @@ if spice.found() and gio.found()
-   ui_modules += {'spice-app': spice_ss}
+@@ -189,6 +189,8 @@ if spice.found()
+   endif
  endif
  
 +subdir('gui-agent')
 +
- keymaps = [
-   ['atset1', 'qcode'],
-   ['linux', 'qcode'],
+ subdir('shader')
+ 
+ if have_system
 -- 
 2.41.0
 

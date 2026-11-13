@@ -1,2 +1,3 @@
 0001-tty-hvc-setup-hvc-consoles-in-RAW-mode-by-default.patch
+0001-x86-CPU-AMD-fix-booting-on-Xen-PV-domU.patch
 pci_op-cleanup.patch

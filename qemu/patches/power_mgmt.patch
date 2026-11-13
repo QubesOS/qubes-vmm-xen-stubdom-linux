@@ -3,13 +3,13 @@ Index: qemu/hw/xen/xen_pt.c
 --- qemu.orig/hw/xen/xen_pt.c
 +++ qemu/hw/xen/xen_pt.c
 @@ -960,6 +960,7 @@ static void xen_pt_unregister_device(PCI
- static Property xen_pci_passthrough_properties[] = {
+ static const Property xen_pci_passthrough_properties[] = {
      DEFINE_PROP_PCI_HOST_DEVADDR("hostaddr", XenPCIPassthroughState, hostaddr),
      DEFINE_PROP_BOOL("permissive", XenPCIPassthroughState, permissive, false),
 +    DEFINE_PROP_BOOL("power_mgmt", XenPCIPassthroughState, power_mgmt, false),
-     DEFINE_PROP_END_OF_LIST(),
  };
  
+ static void xen_pci_passthrough_instance_init(Object *obj)
 Index: qemu/hw/xen/xen_pt_config_init.c
 ===================================================================
 --- qemu.orig/hw/xen/xen_pt_config_init.c

@@ -9,6 +9,15 @@ CONFIG_COMPACTION=y
 CONFIG_SCHED_OMIT_FRAME_POINTER=y
 CONFIG_X86_FAST_FEATURE_TESTS=y
 CONFIG_JUMP_LABEL=y
+# minimize size
+CONFIG_EXPERT=y
+# CONFIG_MULTIUSER is not set
+# CONFIG_SGETMASK_SYSCALL is not set
+# CONFIG_FW_LOADER is not set
+# CONFIG_ALLOW_DEV_COREDUMP is not set
+# CONFIG_FIRMWARE_MEMMAP is not set
+# CONFIG_SCSI_MOD is not set
+# CONFIG_NLS is not set
 
 ## 4.14 optimisation
 CONFIG_SLAB_MERGE_DEFAULT=y
@@ -83,4 +92,4 @@ CONFIG_LOCALVERSION="-xen-stubdom"
 CONFIG_DEFAULT_HOSTNAME="xen-stubdom"
 
 CONFIG_CMDLINE_BOOL=y
-CONFIG_CMDLINE="clocksource=tsc"
+CONFIG_CMDLINE="clocksource=tsc xen_privcmd.unrestricted"

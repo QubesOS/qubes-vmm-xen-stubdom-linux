@@ -1,0 +1,85 @@
+From 7427af41c78b5ff0eec5e7ac1ff29e44c05887d2 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marek=20Marczykowski-G=C3=B3recki?=
+ <marmarek@invisiblethingslab.com>
+Date: Fri, 13 Nov 2026 03:01:06 +0100
+Subject: [PATCH] x86/CPU/AMD: fix booting on Xen PV domU
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Reading the FCH_PM_S5_RESET_STATUS register doesn't make sense in a VM,
+as it's about reporting last hardware reset reason and VM has no access
+to it. On most hypervisors, reading it will simply return all-ones, but
+unfortunately Xen PV domU is (again) special and trying to read not
+allowed MMIO space results in a panic:
+
+    1 of 1 multicall(s) failed: cpu 1
+      call  1: op=1 arg=[ffff88801851b010] result=-22
+    BUG: unable to handle page fault for address: ffffc9004002d3c0
+    #PF: supervisor read access in kernel mode
+    #PF: error_code(0x0000) - not-present page
+    PGD 18f1b067 P4D 18f1b067 PUD 3e8f067 PMD 3e90067 PTE 0
+    Oops: Oops: 0000 [#1] SMP NOPTI
+    CPU: 0 UID: 0 PID: 1 Comm: swapper/0 Tainted: G        W           6.18.62-1.qubes.28.fc41.x86_64 #1 PREEMPT(full)
+    Tainted: [W]=WARN
+    RIP: e030:ioread32+0x32/0x60
+    Code: ff 03 00 77 25 48 81 ff 00 00 01 00 76 08 89 fa ed e9 72 04 8c 00 8b 05 cc 62 88 01 85 c0 75 11 b8 ff ff ff ff e9 5e 04 8c 00 <8b> 07 e9 57 04 8c 00 83 e8 01 48 89 fe 48 c7 c2 67 db 14 82 48 c7
+    RSP: e02b:ffffc9004000be00 EFLAGS: 00010292
+    RAX: 43fa5d3f578e48f3 RBX: 928a59081d78a1d7 RCX: 00000000fed803c3
+    RDX: 00000000039fffff RSI: 00000000fed803c0 RDI: ffffc9004002d3c0
+    RBP: ffffc9004000be38 R08: 0000000000000000 R09: 00000000000fed80
+    R10: 00000000000fed80 R11: 0720072007200720 R12: ffff888005118800
+    R13: ffffc9004002d3c0 R14: 000000000000017a R15: ffffffff832a78cc
+    FS:  0000000000000000(0000) GS:ffff888094f59000(0000) knlGS:0000000000000000
+    CS:  e030 DS: 0000 ES: 0000 CR0: 0000000080050033
+    CR2: ffffc9004002d3c0 CR3: 000000000242c000 CR4: 0000000000050660
+    Call Trace:
+     <TASK>
+     print_s5_reset_status_mmio+0x75/0x1c0
+     ? __pfx_print_s5_reset_status_mmio+0x10/0x10
+     do_one_initcall+0x5a/0x310
+     do_initcalls+0x1ef/0x240
+     kernel_init_freeable+0x18a/0x210
+     ? __pfx_kernel_init+0x10/0x10
+     kernel_init+0x1a/0x140
+     ret_from_fork+0x158/0x170
+     ? __pfx_kernel_init+0x10/0x10
+     ret_from_fork_asm+0x1a/0x30
+     </TASK>
+    Modules linked in:
+    CR2: ffffc9004002d3c0
+
+Fix this by skipping the read when running in a VM, except Xen dom0
+(which technically is a VM, but does have full access to the hardware).
+
+Signed-off-by: Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>
+---
+ arch/x86/kernel/cpu/amd.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/arch/x86/kernel/cpu/amd.c b/arch/x86/kernel/cpu/amd.c
+index 15286b71e9bf..fe3fe545608e 100644
+--- a/arch/x86/kernel/cpu/amd.c
++++ b/arch/x86/kernel/cpu/amd.c
+@@ -26,6 +26,7 @@
+ #include <asm/resctrl.h>
+ #include <asm/msr.h>
+ #include <asm/sev.h>
++#include <xen/xen.h>
+ 
+ #ifdef CONFIG_X86_64
+ # include <asm/mmconfig.h>
+@@ -1370,6 +1371,10 @@ static __init int print_s5_reset_status_mmio(void)
+ 	if (!cpu_feature_enabled(X86_FEATURE_ZEN))
+ 		return 0;
+ 
++	if (cpu_feature_enabled(X86_FEATURE_HYPERVISOR) &&
++	    !xen_initial_domain())
++		return 0;
++
+ 	addr = ioremap(FCH_PM_BASE + FCH_PM_S5_RESET_STATUS, sizeof(value));
+ 	if (!addr)
+ 		return 0;
+-- 
+2.56.0
+

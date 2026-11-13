@@ -16,6 +16,7 @@ index a7224ef469..e88fd46d98 100644
  endif
  
  blobs = [
+-  'ast27x0_bootrom.bin',
 -  'bios.bin',
 -  'bios-256k.bin',
 -  'bios-microvm.bin',
@@ -49,19 +50,17 @@ index a7224ef469..e88fd46d98 100644
 -  'efi-e1000e.rom',
 -  'efi-vmxnet3.rom',
    'qemu-nsis.bmp',
--  'multiboot.bin',
 -  'multiboot_dma.bin',
--  'linuxboot.bin',
 -  'linuxboot_dma.bin',
 -  'kvmvapic.bin',
 -  'pvh.bin',
    's390-ccw.img',
-   's390-netboot.img',
 -  'slof.bin',
    'skiboot.lid',
+   'pnv-pnor.bin',
    'palcode-clipper',
    'u-boot.e500',
--  'u-boot-sam460-20100605.bin',
+-  'u-boot-sam460.bin',
    'qemu_vga.ndrv',
    'edk2-licenses.txt',
    'hppa-firmware.img',
@@ -69,11 +68,12 @@ index a7224ef469..e88fd46d98 100644
 -  'opensbi-riscv32-generic-fw_dynamic.bin',
 -  'opensbi-riscv64-generic-fw_dynamic.bin',
 -  'npcm7xx_bootrom.bin',
+-  'npcm8xx_bootrom.bin',
 -  'vof.bin',
 -  'vof-nvram.bin',
  ]
  
- dtc = find_program('dtc', required: false)
+ if get_option('install_blobs')
 -- 
 2.41.0
 
